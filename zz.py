@@ -110,7 +110,7 @@ with st.container():
         m2.metric("Tổng Missort", f"{int(total_missort):,}")
         m3.metric("Tỷ lệ Missort", f"{final_missort_rate:.1f}%")
     with c2:
-        st.markdown("##### ⚡ Hiệu suất Tháng (26 Công)")
+        st.markdown("##### Hiệu suất Tháng")
         m4, m5 = st.columns(2)
         m4.metric("HS Sản lượng", f"{header_pcs_month:.0f} Pcs/Tháng")
         m5.metric("HS Trọng lượng", f"{header_kg_month:,.0f} Kg/Tháng".replace(",", "."))
