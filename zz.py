@@ -104,7 +104,7 @@ st.markdown("<h1 style='text-align: center; color: #1E293B;'>J&T CARGO HCM - KPI
 with st.container():
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("##### 📦 Sản lượng & Chất lượng")
+        st.markdown("#####  Sản lượng & Chất lượng")
         m1, m2, m3 = st.columns(3)
         m1.metric("Tổng hàng", f"{int(total_vol):,}".replace(",", "."))
         m2.metric("Tổng Missort", f"{int(total_missort):,}")
@@ -115,7 +115,7 @@ with st.container():
         m4.metric("HS Sản lượng", f"{header_pcs_month:.0f} Pcs/Tháng")
         m5.metric("HS Trọng lượng", f"{header_kg_month:,.0f} Kg/Tháng".replace(",", "."))
     with c3:
-        st.markdown("##### 🚚 Vận tải & Tồn kho")
+        st.markdown("#####  Vận tải & Tồn kho")
         m6, m7 = st.columns(2)
         m6.metric("Tổng Backlog", f"{int(total_backlog)} kiện")
         m7.metric("LH Ontime", f"{final_ontime_rate:.1f}%")
