@@ -33,7 +33,7 @@ def get_data():
     headers = {"Authorization": f"Bearer {token}"}
     
     try:
-        res = requests.get(url, headers=headers, timeout=10).json()
+        res = requests.get(url, headers=headers, timeout=30).json()
         if res.get("code") != 0:
             st.error(f"❌ Lỗi Feishu: {res.get('msg')}")
             return pd.DataFrame()
