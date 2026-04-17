@@ -53,12 +53,16 @@ def get_data():
             except:
                 return 0
 
-        # --- LOGIC TỰ ĐỘNG QUÉT NGÀY (DỰA VÀO DÒNG 9 - TỔNG LƯỢNG HÀNG XỬ LÝ) ---
+        # --- CHỈNH SỬA TỌA ĐỘ CỘT Ở ĐÂY ---
+        # Ngày 1 đang nằm ở Index 6 (do có 2 cột thông tin + 4 cột trống). 
+        # Vì vòng lặp i chạy từ 1, ta cộng thêm 5 (1 + 5 = 6)
+        OFFSET = 5  
+
+        # --- LOGIC TỰ ĐỘNG QUÉT NGÀY (DỰA VÀO DÒNG 9) ---
         num_days = 15 
         if len(vals) > 8:
             for d in range(31, 0, -1): # Quét ngược từ 31 về 1
-                # Cột Ngày 1 bắt đầu sau 6 cột (Khu vực, Trạng thái, Tháng, W14, W15, W16)
-                col_idx = d + 5 
+                col_idx = d + OFFSET 
                 if col_idx < len(vals[8]):
                     val = str(vals[8][col_idx]).strip()
                     if val and val != "0" and "IF(" not in val and "#" not in val:
@@ -67,31 +71,24 @@ def get_data():
         if num_days == 0: num_days = 1
         # ------------------------------------------------------------------------
 
-        # MAPPING CHUẨN XÁC TỌA ĐỘ TỪNG DÒNG (Index API = Dòng Excel - 1)
-        # Vì Ngày 1 nằm ở cột số 7 (Index = 6) nên dùng i + 5 (Ví dụ i=1 thì cột = 6)
+        # MAPPING LẠI DỮ LIỆU ĐÃ ÁP DỤNG OFFSET
         data = {
             "Ngày": [str(i) for i in range(1, num_days + 1)],
-            "Tổng lượng hàng": [clean_val(8, i+5) for i in range(1, num_days + 1)],        # Dòng 9: Tổng lượng hàng xử lý
-            "Số đơn Missort": [clean_val(11, i+5) for i in range(1, num_days + 1)],        # Dòng 12: Tổng số đơn hàng nhầm tuyến
-            "Tỷ lệ Missort (%)": [clean_val(12, i+5) for i in range(1, num_days + 1)],     # Dòng 13: Tỷ lệ Missort
-            "Tổng nhân sự": [clean_val(15, i+5) for i in range(1, num_days + 1)],          # Dòng 16: Tổng Hệ số FTE
-            "Tổng trọng lượng (Kg)": [clean_val(9, i+5) for i in range(1, num_days + 1)],  # Dòng 10: Tổng trọng lượng xử lý
-            "Backlog tồn đọng": [clean_val(20, i+5) for i in range(1, num_days + 1)],      # Dòng 21: Tổng các đơn hàng tồn đọng
-            
-            # Xe Sai = Xe trễ Shuttle (Dòng 31) + Xe trễ Linehaul (Dòng 32)
-            "Xe Sai COT (Tổng)": [clean_val(30, i+5) + clean_val(31, i+5) for i in range(1, num_days + 1)], 
-            
-            # Xe Đúng = Tổng chuyến (Dòng 27+28) - Xe trễ (Dòng 31+32)
-            "Xe Đúng COT (Tổng)": [(clean_val(26, i+5) + clean_val(27, i+5)) - (clean_val(30, i+5) + clean_val(31, i+5)) for i in range(1, num_days + 1)],
-            
-            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(34, i+5) for i in range(1, num_days + 1)] # Dòng 35: % LH Depar Ontime
+            "Tổng lượng hàng": [clean_val(8, i + OFFSET) for i in range(1, num_days + 1)],        
+            "Số đơn Missort": [clean_val(11, i + OFFSET) for i in range(1, num_days + 1)],        
+            "Tỷ lệ Missort (%)": [clean_val(12, i + OFFSET) for i in range(1, num_days + 1)],     
+            "Tổng nhân sự": [clean_val(15, i + OFFSET) for i in range(1, num_days + 1)],          
+            "Tổng trọng lượng (Kg)": [clean_val(9, i + OFFSET) for i in range(1, num_days + 1)],  
+            "Backlog tồn đọng": [clean_val(21, i + OFFSET) for i in range(1, num_days + 1)],      
+            "Xe Sai COT (Tổng)": [clean_val(30, i + OFFSET) + clean_val(31, i + OFFSET) for i in range(1, num_days + 1)], 
+            "Xe Đúng COT (Tổng)": [(clean_val(27, i + OFFSET) + clean_val(28, i + OFFSET)) - (clean_val(30, i + OFFSET) + clean_val(31, i + OFFSET)) for i in range(1, num_days + 1)],
+            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(34, i + OFFSET) for i in range(1, num_days + 1)] 
         }
         return pd.DataFrame(data)
     except Exception as e:
         st.error(f"❌ Lỗi hệ thống: {str(e)}")
         return pd.DataFrame()
 
-# --- TỪ ĐÂY TRỞ XUỐNG GIỮ NGUYÊN 100% CODE GIAO DIỆN CỦA BẠN ---
 # 3. XỬ LÝ DỮ LIỆU KPI
 df = get_data()
 
