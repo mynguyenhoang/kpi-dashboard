@@ -16,7 +16,7 @@ def get_tenant_access_token():
             "app_id": "cli_a9456e412bb89bce", 
             "app_secret": "BwSAuHHsv2woEdIGTqJoKboH6i1i7qBB"
         }
-        r = requests.post(url, json=payload, timeout=10)
+        r = requests.post(url, json=payload, timeout=30)
         return r.json().get("tenant_access_token")
     except:
         return None
@@ -28,7 +28,6 @@ def get_data():
         st.error("❌ Không lấy được Token. Hãy kiểm tra lại APP_ID/SECRET.")
         return pd.DataFrame()
 
-    # Lấy vùng dữ liệu từ A1 để đảm bảo không bị lệch dòng, dùng FormattedValue để lấy số hiển thị
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ40?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     
@@ -42,32 +41,47 @@ def get_data():
         if not vals:
             return pd.DataFrame()
 
-        # Hàm làm sạch dữ liệu: lọc bỏ chữ, ký tự lạ, dấu phẩy
         def clean_val(row_idx, col_idx):
             try:
                 if row_idx < len(vals) and col_idx < len(vals[row_idx]):
                     v = vals[row_idx][col_idx]
                     if not v or any(err in str(v) for err in ["IF(", "=", "#N/A", "#ERROR"]): 
                         return 0
-                    # Xử lý định dạng số VN (3.442) hoặc quốc tế (3,442) và %
                     s = str(v).replace('%', '').replace(',', '').strip()
                     return float(s)
                 return 0
             except:
                 return 0
 
-        # MAPPING TỌA ĐỘ CHUẨN (Ngày 1 bắt đầu từ cột E - Index 4)
+        # --- LOGIC MỚI: TỰ ĐỘNG DÒ TÌM SỐ NGÀY CÓ DỮ LIỆU ---
+        num_days = 0
+        if len(vals) > 4: # Đảm bảo file có đủ dòng
+            # Quét ngược từ ngày 31 về ngày 1 (Cột Ngày 1 ở Index 4)
+            for d in range(31, 0, -1):
+                col_idx = d + 3 
+                if col_idx < len(vals[4]):
+                    val = str(vals[4][col_idx]).strip()
+                    # Nếu ô có giá trị và không phải là lỗi hay công thức
+                    if val and val != "0" and "IF(" not in val and "#" not in val:
+                        num_days = d
+                        break
+        
+        # Đề phòng file trắng bóc chưa có ngày nào
+        if num_days == 0: 
+            num_days = 1 
+
+        # --- MAPPING TỌA ĐỘ CHUẨN (Tự co giãn theo num_days) ---
         data = {
-            "Ngày": [str(i) for i in range(1, 16)],
-            "Tổng lượng hàng": [clean_val(4, i+4) for i in range(15)],       # Dòng 5 Excel
-            "Số đơn Missort": [clean_val(5, i+4) for i in range(15)],        # Dòng 6 Excel
-            "Tỷ lệ Missort (%)": [clean_val(6, i+4) for i in range(15)],     # Dòng 7 Excel
-            "Tổng nhân sự": [clean_val(9, i+4) for i in range(15)],          # Dòng 10 Excel
-            "Tổng trọng lượng (Kg)": [clean_val(10, i+4) for i in range(15)],# Dòng 11 Excel
-            "Backlog tồn đọng": [clean_val(15, i+4) for i in range(15)],     # Dòng 16 Excel
-            "Xe Đúng COT (Tổng)": [clean_val(20, i+4) for i in range(15)],   # Dòng 21 Excel
-            "Xe Sai COT (Tổng)": [clean_val(23, i+4) for i in range(15)],    # Dòng 24 Excel
-            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(26, i+4) for i in range(15)] # Dòng 27 Excel
+            "Ngày": [str(d) for d in range(1, num_days + 1)],
+            "Tổng lượng hàng": [clean_val(4, d+3) for d in range(1, num_days + 1)],       
+            "Số đơn Missort": [clean_val(5, d+3) for d in range(1, num_days + 1)],        
+            "Tỷ lệ Missort (%)": [clean_val(6, d+3) for d in range(1, num_days + 1)],     
+            "Tổng nhân sự": [clean_val(9, d+3) for d in range(1, num_days + 1)],          
+            "Tổng trọng lượng (Kg)": [clean_val(10, d+3) for d in range(1, num_days + 1)],
+            "Backlog tồn đọng": [clean_val(15, d+3) for d in range(1, num_days + 1)],     
+            "Xe Đúng COT (Tổng)": [clean_val(21, d+3) for d in range(1, num_days + 1)],   # Khớp Dòng 22 Excel
+            "Xe Sai COT (Tổng)": [clean_val(25, d+3) for d in range(1, num_days + 1)],    # Khớp Dòng 26 Excel
+            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(28, d+3) for d in range(1, num_days + 1)] # Khớp Dòng 29 Excel
         }
         return pd.DataFrame(data)
     except Exception as e:
@@ -104,18 +118,18 @@ st.markdown("<h1 style='text-align: center; color: #1E293B;'>J&T CARGO HCM - KPI
 with st.container():
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("#####  Sản lượng & Chất lượng")
+        st.markdown("##### 📦 Sản lượng & Chất lượng")
         m1, m2, m3 = st.columns(3)
         m1.metric("Tổng hàng", f"{int(total_vol):,}".replace(",", "."))
         m2.metric("Tổng Missort", f"{int(total_missort):,}")
         m3.metric("Tỷ lệ Missort", f"{final_missort_rate:.1f}%")
     with c2:
-        st.markdown("##### Hiệu suất Tháng")
+        st.markdown("##### ⚡ Hiệu suất Tháng")
         m4, m5 = st.columns(2)
         m4.metric("HS Sản lượng", f"{header_pcs_month:.0f} Pcs/Tháng")
         m5.metric("HS Trọng lượng", f"{header_kg_month:,.0f} Kg/Tháng".replace(",", "."))
     with c3:
-        st.markdown("#####  Vận tải & Tồn kho")
+        st.markdown("##### 🚚 Vận tải & Tồn kho")
         m6, m7 = st.columns(2)
         m6.metric("Tổng Backlog", f"{int(total_backlog)} kiện")
         m7.metric("LH Ontime", f"{final_ontime_rate:.1f}%")
