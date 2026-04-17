@@ -25,7 +25,7 @@ def get_tenant_access_token():
 def get_data():
     token = get_tenant_access_token()
     if not token:
-        st.error("❌ Không lấy được Token. Hãy kiểm tra lại APP_ID/SECRET.")
+        st.error("❌ Không lấy được Token Feishu. Hãy kiểm tra lại APP_ID/SECRET.")
         return pd.DataFrame()
 
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ40?valueRenderOption=FormattedValue"
@@ -38,7 +38,7 @@ def get_data():
             return pd.DataFrame()
 
         vals = res.get('data', {}).get('valueRange', {}).get('values', [])
-        if not vals:
+        if not vals or len(vals) < 35:
             return pd.DataFrame()
 
         def clean_val(row_idx, col_idx):
@@ -53,50 +53,49 @@ def get_data():
             except:
                 return 0
 
-        # --- CĂN LẠI CỘT TẠI ĐÂY ---
-        # Do thêm 4 cột W14-W17, Ngày 1 nằm ở cột số 7 (Index 6 API)
-        # Nghĩa là cột = i + 5 (với i bắt đầu từ Ngày 1)
-        OFFSET = 5  
+        # --- LOGIC TỰ ĐỘNG DÒ TÌM CỘT "NGÀY 1" ---
+        # Quét trên dòng 9 (Tổng lượng hàng xử lý - index 8 trong mảng)
+        # Bỏ qua các cột text đầu tiên, tìm ô đầu tiên có chứa số liệu (ví dụ: 7620)
+        START_COL = 4 # Mặc định dự phòng
+        for col_idx in range(2, len(vals[8])):
+            val = str(vals[8][col_idx]).strip()
+            # Kiểm tra xem ô đó có phải là số hay không (bỏ qua khoảng trống và text)
+            if val and val != "0" and val.replace(',', '').replace('.', '').isdigit():
+                START_COL = col_idx
+                break
 
-        # --- LOGIC TỰ ĐỘNG QUÉT NGÀY DỰA VÀO DÒNG 9 (TỔNG LƯỢNG HÀNG XỬ LÝ) ---
-        num_days = 15 
-        if len(vals) > 8:
-            for d in range(31, 0, -1): 
-                col_idx = d + OFFSET 
-                if col_idx < len(vals[8]):
-                    val = str(vals[8][col_idx]).strip()
-                    if val and val != "0" and "IF(" not in val and "#" not in val:
-                        num_days = d
-                        break
+        # --- LOGIC TỰ ĐỘNG DÒ SỐ NGÀY HIỆN CÓ ---
+        # Quét ngược từ phải sang trái để tìm ngày cuối cùng được update
+        num_days = 0
+        for col_idx in range(len(vals[8]) - 1, START_COL - 1, -1):
+            val = str(vals[8][col_idx]).strip()
+            if val and val != "0" and "IF(" not in val and "#" not in val:
+                num_days = col_idx - START_COL + 1
+                break
+
         if num_days == 0: num_days = 1
-        # ------------------------------------------------------------------------
 
-        # MAPPING LẠI DỮ LIỆU THEO TỌA ĐỘ MỚI (Index API = Dòng Excel - 1)
+        # --- CÀO DỮ LIỆU ĐỘNG THEO START_COL TÌM ĐƯỢC ---
         data = {
             "Ngày": [str(i) for i in range(1, num_days + 1)],
-            "Tổng lượng hàng": [clean_val(8, i + OFFSET) for i in range(1, num_days + 1)],        # Dòng 9
-            "Số đơn Missort": [clean_val(11, i + OFFSET) for i in range(1, num_days + 1)],        # Dòng 12
-            "Tỷ lệ Missort (%)": [clean_val(12, i + OFFSET) for i in range(1, num_days + 1)],     # Dòng 13
-            "Tổng nhân sự": [clean_val(15, i + OFFSET) for i in range(1, num_days + 1)],          # Dòng 16
-            "Tổng trọng lượng (Kg)": [clean_val(9, i + OFFSET) for i in range(1, num_days + 1)],  # Dòng 10
-            
-            # CẬP NHẬT LẠI DÒNG BỊ LỆCH TỪ ẢNH MỚI:
-            "Backlog tồn đọng": [clean_val(20, i + OFFSET) for i in range(1, num_days + 1)],      # Dòng 21
-            
-            # Xe Sai = Trễ Shuttle (Dòng 31/Idx 30) + Trễ Linehaul (Dòng 32/Idx 31)
-            "Xe Sai COT (Tổng)": [clean_val(30, i + OFFSET) + clean_val(31, i + OFFSET) for i in range(1, num_days + 1)], 
-            
-            # Xe Đúng = Tổng chuyến Shuttle (Dòng 27/Idx 26) + Tổng chuyến Linehaul (Dòng 28/Idx 27) - Xe Sai
-            "Xe Đúng COT (Tổng)": [(clean_val(26, i + OFFSET) + clean_val(27, i + OFFSET)) - (clean_val(30, i + OFFSET) + clean_val(31, i + OFFSET)) for i in range(1, num_days + 1)],
-            
-            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(34, i + OFFSET) for i in range(1, num_days + 1)] # Dòng 35
+            "Tổng lượng hàng": [clean_val(8, i - 1 + START_COL) for i in range(1, num_days + 1)],        
+            "Số đơn Missort": [clean_val(11, i - 1 + START_COL) for i in range(1, num_days + 1)],        
+            "Tỷ lệ Missort (%)": [clean_val(12, i - 1 + START_COL) for i in range(1, num_days + 1)],     
+            "Tổng nhân sự": [clean_val(15, i - 1 + START_COL) for i in range(1, num_days + 1)],          
+            "Tổng trọng lượng (Kg)": [clean_val(9, i - 1 + START_COL) for i in range(1, num_days + 1)],  
+            "Backlog tồn đọng": [clean_val(20, i - 1 + START_COL) for i in range(1, num_days + 1)],      
+            "Xe Sai COT (Tổng)": [clean_val(30, i - 1 + START_COL) + clean_val(31, i - 1 + START_COL) for i in range(1, num_days + 1)], 
+            "Xe Đúng COT (Tổng)": [(clean_val(26, i - 1 + START_COL) + clean_val(27, i - 1 + START_COL)) - (clean_val(30, i - 1 + START_COL) + clean_val(31, i - 1 + START_COL)) for i in range(1, num_days + 1)],
+            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(34, i - 1 + START_COL) for i in range(1, num_days + 1)] 
         }
+        
         return pd.DataFrame(data)
+        
     except Exception as e:
         st.error(f"❌ Lỗi hệ thống: {str(e)}")
         return pd.DataFrame()
 
-# --- TỪ ĐÂY TRỞ XUỐNG GIỮ NGUYÊN ---
+# 3. XỬ LÝ DỮ LIỆU & GIAO DIỆN
 df = get_data()
 
 if df.empty:
@@ -130,7 +129,7 @@ with st.container():
         m1, m2, m3 = st.columns(3)
         m1.metric("Tổng hàng", f"{int(total_vol):,}".replace(",", "."))
         m2.metric("Tổng Missort", f"{int(total_missort):,}")
-        m3.metric("Tỷ lệ Missort", f"{final_missort_rate:.1f}%")
+        m3.metric("Tỷ lệ Missort", f"{final_missort_rate:.2f}%")
     with c2:
         st.markdown("##### Hiệu suất Tháng")
         m4, m5 = st.columns(2)
@@ -140,7 +139,7 @@ with st.container():
         st.markdown("#####  Vận tải & Tồn kho")
         m6, m7 = st.columns(2)
         m6.metric("Tổng Backlog", f"{int(total_backlog)} kiện")
-        m7.metric("LH Ontime", f"{final_ontime_rate:.1f}%")
+        m7.metric("LH Ontime", f"{final_ontime_rate:.2f}%")
 
 st.markdown("---")
 
