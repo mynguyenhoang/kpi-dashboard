@@ -177,3 +177,25 @@ with c_v1:
     fig_vol.update_layout(xaxis_type='category', height=350, plot_bgcolor='white')
     st.plotly_chart(fig_vol, use_container_width=True)
 with c_v2:
+    st.markdown("**Backlog tồn đọng hàng ngày**")
+    fig_bl = px.bar(df, x="Ngày", y="Backlog tồn đọng", text="Backlog tồn đọng", color_discrete_sequence=['#F43F5E'])
+    fig_bl.update_traces(textposition="outside", texttemplate='%{text:.0f}')
+    fig_bl.update_layout(xaxis_type='category', height=350, plot_bgcolor='white')
+    st.plotly_chart(fig_bl, use_container_width=True)
+
+c_t1, c_t2 = st.columns(2)
+with c_t1:
+    st.markdown("**Đúng giờ Linehaul (%)**")
+    fig_lh = px.line(df, x="Ngày", y="Tỷ lệ Linehaul đúng giờ (%)", markers=True, color_discrete_sequence=['#0EA5E9'])
+    fig_lh.update_traces(text=[f"{v:g}%" if pd.notna(v) else "" for v in df['Tỷ lệ Linehaul đúng giờ (%)']], textposition="top center", mode="lines+markers+text")
+    fig_lh.update_layout(xaxis_type='category', height=350, plot_bgcolor='white')
+    st.plotly_chart(fig_lh, use_container_width=True)
+with c_t2:
+    st.markdown("**Kiểm soát Chuyến xe (Đúng/Sai COT)**")
+    fig_xe = px.bar(df, x="Ngày", y=["Xe Đúng COT (Tổng)", "Xe Sai COT (Tổng)"], text_auto=True, color_discrete_map={"Xe Đúng COT (Tổng)": "#10B981", "Xe Sai COT (Tổng)": "#FB7185"})
+    fig_xe.update_layout(xaxis_type='category', barmode='group', height=350, plot_bgcolor='white', legend_title=None)
+    st.plotly_chart(fig_xe, use_container_width=True)
+
+with st.expander("Bảng đối soát dữ liệu thô"):
+    # Dùng fillna("") để các ô không có dữ liệu hiện trống trơn thay vì chữ NaN
+    st.dataframe(df.set_index("Ngày").T.fillna(""), use_container_width=True)
