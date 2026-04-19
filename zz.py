@@ -54,31 +54,35 @@ def get_data():
         if not vals or len(vals) < 55:
             return pd.DataFrame(), pd.DataFrame()
 
+        # BỘ LỌC DỮ LIỆU "DIỆT" LỖI SAI SỐ
         def clean_val(row_idx, col_idx):
             try:
                 if row_idx < len(vals) and col_idx < len(vals[row_idx]):
                     v = vals[row_idx][col_idx]
-                    if v is None or str(v).strip() == "" or any(err in str(v) for err in ["IF(", "=", "#N/A", "#ERROR"]): 
+                    str_v = str(v).strip()
+                    # Loại bỏ ô trống hoặc chứa công thức lỗi
+                    if v is None or str_v == "" or "#" in str_v or "IF(" in str_v or "=" in str_v: 
                         return np.nan
-                    s = str(v).replace('%', '').replace(',', '').strip()
-                    if s == '-': return 0
+                    
+                    # Chuẩn hóa dấu phẩy, phần trăm
+                    s = str_v.replace('%', '').replace(',', '').strip()
+                    if s == '-': return 0.0
                     return float(s)
                 return np.nan
             except:
                 return np.nan
 
-        # TÌM CỘT NGÀY THÁNG (Dựa vào Index 3 từ file test của bạn)
+        # TÌM CỘT NGÀY THÁNG (Index 3)
         date_row_idx = 3 
         start_col_idx = -1
         
-        # Quét ngang dòng Index 3 để tìm số "1"
         for c in range(2, len(vals[date_row_idx])):
             val = str(vals[date_row_idx][c]).strip()
             if val == "1":
                 start_col_idx = c
                 break
 
-        num_days = 26 # Mặc định
+        num_days = 26 
         if start_col_idx != -1:
             max_day = 1
             for c in range(start_col_idx, len(vals[date_row_idx])):
@@ -87,60 +91,56 @@ def get_data():
                     max_day = max(max_day, int(val))
             num_days = max_day
         else:
-            start_col_idx = 6 # Mặc định cột G
+            start_col_idx = 6
 
         cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
         def extract_hub_data(vol_idx, wgt_idx, ms_idx, ms_rt_idx, fte_idx, bl_idx, chuyen_idxs, tre_idxs, lh_rt_idx):
-            data = {
-                "Ngày": [f"Ngày {i+1}" for i in range(num_days)],
-                "Tổng lượng hàng": [clean_val(vol_idx, c) for c in cols_to_scan],
-                "Tổng trọng lượng (Kg)": [clean_val(wgt_idx, c) for c in cols_to_scan],
-                "Số đơn Missort": [clean_val(ms_idx, c) for c in cols_to_scan],
-                "Tỷ lệ Missort (%)": [clean_val(ms_rt_idx, c) for c in cols_to_scan],
-                "Tổng nhân sự": [clean_val(fte_idx, c) for c in cols_to_scan],
-                "Backlog tồn đọng": [clean_val(bl_idx, c) for c in cols_to_scan],
-                "Xe Sai COT (Tổng)": [
-                    sum(filter(pd.notna, [clean_val(r, c) for r in tre_idxs])) if any(pd.notna(clean_val(r, c)) for r in tre_idxs) else np.nan 
-                    for c in cols_to_scan
-                ],
-                "Xe Đúng COT (Tổng)": [
-                    sum(filter(pd.notna, [clean_val(r, c) for r in chuyen_idxs])) - sum(filter(pd.notna, [clean_val(r, c) for r in tre_idxs]))
-                    if any(pd.notna(clean_val(r, c)) for r in chuyen_idxs) else np.nan 
-                    for c in cols_to_scan
-                ],
-                "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(lh_rt_idx, c) for c in cols_to_scan]
-            }
-            return pd.DataFrame(data)
+            data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
+            
+            data["Tổng lượng hàng"] = [clean_val(vol_idx, c) for c in cols_to_scan]
+            data["Tổng trọng lượng (Kg)"] = [clean_val(wgt_idx, c) for c in cols_to_scan]
+            data["Số đơn Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
+            data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan]
+            data["Tổng nhân sự"] = [clean_val(fte_idx, c) for c in cols_to_scan]
+            data["Backlog tồn đọng"] = [clean_val(bl_idx, c) for c in cols_to_scan]
+            data["Tỷ lệ Linehaul đúng giờ (%)"] = [clean_val(lh_rt_idx, c) for c in cols_to_scan]
 
-        # ====================================================================
-        # LẮP CHÍNH XÁC INDEX TỪ KẾT QUẢ BẠN CUNG CẤP (KHÔNG ĐOÁN NỮA)
-        # ====================================================================
+            # XỬ LÝ CHUẨN XÁC SỐ XE ĐÚNG/SAI
+            xe_sai_list = []
+            xe_dung_list = []
+            
+            for c in cols_to_scan:
+                # Lấy tổng chuyến
+                chuyen_vals = [clean_val(r, c) for r in chuyen_idxs]
+                tre_vals = [clean_val(r, c) for r in tre_idxs]
+                
+                sum_chuyen = sum([x for x in chuyen_vals if pd.notna(x)])
+                sum_tre = sum([x for x in tre_vals if pd.notna(x)])
+                
+                # Nếu tổng chuyến = 0 (ngày nghỉ hoặc chưa có dữ liệu) thì cho thành NaN để ẩn trên chart
+                if sum_chuyen == 0 and all(pd.isna(x) for x in chuyen_vals):
+                    xe_sai_list.append(np.nan)
+                    xe_dung_list.append(np.nan)
+                else:
+                    xe_sai_list.append(sum_tre)
+                    xe_dung_list.append(sum_chuyen - sum_tre)
+                    
+            data["Xe Sai COT (Tổng)"] = xe_sai_list
+            data["Xe Đúng COT (Tổng)"] = xe_dung_list
+
+            return pd.DataFrame(data)
 
         # 1. HCM HUB
         df_hcm = extract_hub_data(
-            vol_idx=8,            # Index 8: Tổng lượng hàng xử lý
-            wgt_idx=9,            # Index 9: Tổng trọng lượng xử lý
-            ms_idx=17,            # Index 17: HCM HUB | Tổng số đơn hàng nhầm tuyến
-            ms_rt_idx=18,         # Index 18: Tỷ lệ
-            fte_idx=23,           # Index 23: HCM HUB | Tổng Hệ số FTE
-            bl_idx=31,            # Index 31: HCM HUB | Tổng các đơn hàng tồn đọng
-            chuyen_idxs=[38, 39], # Index 38, 39: Shuttle, Linehaul (Tổng chuyến)
-            tre_idxs=[40, 41],    # Index 40, 41: Shuttle, Linehaul (Xe trễ)
-            lh_rt_idx=43          # Index 43: % LH Depar OntimeLinehual
+            vol_idx=8, wgt_idx=9, ms_idx=17, ms_rt_idx=18, fte_idx=23, bl_idx=31, 
+            chuyen_idxs=[38, 39], tre_idxs=[40, 41], lh_rt_idx=43
         )
 
         # 2. BN HUB
         df_bn = extract_hub_data(
-            vol_idx=14,           # Index 14: BN HUB | Tổng lượng hàng xử lý
-            wgt_idx=15,           # Index 15: Tổng trọng lượng xử lý
-            ms_idx=19,            # Index 19: BN HUB | Tổng số đơn hàng nhầm tuyến
-            ms_rt_idx=20,         # Index 20: Tỷ lệ
-            fte_idx=26,           # Index 26: BN HUB | Tổng Hệ số FTE
-            bl_idx=32,            # Index 32: BN HUB | Tổng các đơn hàng tồn đọng
-            chuyen_idxs=[47, 48], # Index 47, 48: Shuttle, Linehaul (Tổng chuyến)
-            tre_idxs=[49, 50],    # Index 49, 50: Shuttle, Linehaul (Xe trễ)
-            lh_rt_idx=52          # Index 52: % LH Depar OntimeLinehual
+            vol_idx=14, wgt_idx=15, ms_idx=19, ms_rt_idx=20, fte_idx=26, bl_idx=32, 
+            chuyen_idxs=[47, 48], tre_idxs=[49, 50], lh_rt_idx=52
         )
         
         return df_hcm, df_bn
@@ -159,32 +159,33 @@ if df_hcm.empty and df_bn.empty:
 
 tab1, tab2 = st.tabs(["🏢 HỒ CHÍ MINH HUB", "🏢 BẮC NINH HUB"])
 
+def format_vietnam(number):
+    """Hàm định dạng số kiểu Việt Nam: 1.000.000 thay vì 1,000,000"""
+    if pd.isna(number): return "0"
+    return f"{number:,.0f}".replace(",", ".")
+
 def render_dashboard(df, primary_color):
     if df.empty:
         st.info("Chưa có dữ liệu cho Hub này.")
         return
 
-    valid_vol = df['Tổng lượng hàng'].dropna()
-    total_vol = valid_vol.sum() 
-    total_weight = df['Tổng trọng lượng (Kg)'].dropna().sum()
-    total_missort = df['Số đơn Missort'].dropna().sum()
-    total_backlog = df['Backlog tồn đọng'].dropna().sum()
-    total_man_days = df['Tổng nhân sự'].dropna().sum()
+    # TÍNH TỔNG (Loại bỏ NaN an toàn)
+    total_vol = df['Tổng lượng hàng'].sum(skipna=True) 
+    total_weight = df['Tổng trọng lượng (Kg)'].sum(skipna=True)
+    total_missort = df['Số đơn Missort'].sum(skipna=True)
+    total_backlog = df['Backlog tồn đọng'].sum(skipna=True)
 
-    working_days = 26 
-    header_pcs_month = (total_vol / total_man_days * working_days) if total_man_days > 0 else 0
-    header_kg_month = (total_weight / total_man_days * working_days) if total_man_days > 0 else 0
-
-    total_xe_dung = df['Xe Đúng COT (Tổng)'].dropna().sum()
-    total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].dropna().sum()
+    # Tỷ lệ tổng
+    total_xe_dung = df['Xe Đúng COT (Tổng)'].sum(skipna=True)
+    total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
     final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("📦 Tổng Sản Lượng", f"{int(total_vol) if pd.notna(total_vol) else 0:,}".replace(",", "."))
-    c2.metric("⚖️ Tổng Trọng Lượng", f"{int(total_weight) if pd.notna(total_weight) else 0:,}".replace(",", ".") + " kg")
-    c3.metric("❌ Tổng Missort", f"{int(total_missort) if pd.notna(total_missort) else 0:,}", f"{final_missort_rate:.2f}% tỷ lệ")
-    c4.metric("📦 Tổng Backlog", f"{int(total_backlog) if pd.notna(total_backlog) else 0:,}")
+    c1.metric("📦 Tổng Sản Lượng", format_vietnam(total_vol))
+    c2.metric("⚖️ Tổng Trọng Lượng", format_vietnam(total_weight) + " kg")
+    c3.metric("❌ Tổng Missort", format_vietnam(total_missort), f"{final_missort_rate:.2f}% tỷ lệ")
+    c4.metric("📦 Tổng Backlog", format_vietnam(total_backlog))
     c5.metric("🚚 Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -195,7 +196,7 @@ def render_dashboard(df, primary_color):
     with col_chart1:
         fig_vol = px.area(df, x="Ngày", y="Tổng lượng hàng", title="Biểu đồ Sản lượng hàng ngày")
         fig_vol.update_traces(line_color=primary_color, fillcolor='rgba(56, 189, 248, 0.2)', mode='lines+markers+text', 
-                              text=[f"{v:g}" if pd.notna(v) else "" for v in df['Tổng lượng hàng']], textposition="top center")
+                              text=[format_vietnam(v) if pd.notna(v) else "" for v in df['Tổng lượng hàng']], textposition="top center")
         fig_vol.update_layout(plot_bgcolor='white', hovermode='x unified', margin=dict(t=40, l=10, r=10, b=10))
         fig_vol.update_xaxes(showgrid=False)
         fig_vol.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
@@ -226,15 +227,19 @@ def render_dashboard(df, primary_color):
 
     with col_chart4:
         fig_bl = px.bar(df, x="Ngày", y="Backlog tồn đọng", title="Backlog tồn đọng cuối ngày")
-        fig_bl.update_traces(marker_color='#f59e0b', text=[f"{v:g}" if pd.notna(v) else "" for v in df['Backlog tồn đọng']], textposition="outside")
+        fig_bl.update_traces(marker_color='#f59e0b', text=[format_vietnam(v) if pd.notna(v) and v > 0 else "" for v in df['Backlog tồn đọng']], textposition="outside")
         fig_bl.update_layout(plot_bgcolor='white', hovermode='x unified', margin=dict(t=40, l=10, r=10, b=10))
         fig_bl.update_xaxes(showgrid=False)
         fig_bl.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    with st.expander("🔍 Bảng đối soát dữ liệu thô"):
-        df_show = df.set_index("Ngày").T
-        df_show = df_show.fillna("")
+    with st.expander("🔍 Bảng đối soát dữ liệu thô (Bấm để xem)"):
+        # Format lại bảng thô cho dễ nhìn
+        df_show = df.copy()
+        for col in df_show.columns:
+            if col != "Ngày":
+                df_show[col] = df_show[col].apply(lambda x: format_vietnam(x) if pd.notna(x) else "")
+        df_show = df_show.set_index("Ngày").T
         st.dataframe(df_show, use_container_width=True)
 
 with tab1:
