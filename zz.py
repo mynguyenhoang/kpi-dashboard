@@ -29,7 +29,8 @@ def get_data():
         st.error("❌ Không lấy được Token Feishu. Hãy kiểm tra lại APP_ID/SECRET.")
         return pd.DataFrame()
 
-    url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ40?valueRenderOption=FormattedValue"
+    # QUAN TRỌNG: Đã mở rộng range từ AQ40 lên AQ60 để quét đủ các row bên dưới
+    url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ60?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     
     try:
@@ -39,7 +40,8 @@ def get_data():
             return pd.DataFrame()
 
         vals = res.get('data', {}).get('valueRange', {}).get('values', [])
-        if not vals or len(vals) < 35:
+        # Cập nhật giới hạn số dòng kiểm tra (cần ít nhất 48 dòng để đọc chỉ số Linehaul)
+        if not vals or len(vals) < 48:
             return pd.DataFrame()
 
         def clean_val(row_idx, col_idx):
@@ -58,6 +60,7 @@ def get_data():
 
         # --- LOGIC TỰ ĐỘNG DÒ TÌM CỘT "NGÀY 1" ---
         START_COL = 4 
+        # Cột ngày giờ nằm ở dòng 9 (index 8)
         for col_idx in range(2, len(vals[8])):
             val = str(vals[8][col_idx]).strip()
             if val and val.replace(',', '').replace('.', '').isdigit():
@@ -76,30 +79,33 @@ def get_data():
         cols_to_scan = [START_COL + i for i in range(num_days)]
 
         def get_xe_sai(c):
-            tre = [clean_val(30, c), clean_val(31, c)]
+            # Lấy chuyến xuất phát trễ (Shuttle index 43, Linehaul index 44)
+            tre = [clean_val(43, c), clean_val(44, c)]
             valid = [x for x in tre if pd.notna(x)]
             return sum(valid) if valid else np.nan
 
         def get_xe_dung(c):
-            chuyen = [clean_val(26, c), clean_val(27, c)]
-            tre = [clean_val(30, c), clean_val(31, c)]
+            # Tổng chuyến (Shuttle index 41, Linehaul index 42)
+            chuyen = [clean_val(41, c), clean_val(42, c)]
+            # Trừ đi chuyến trễ
+            tre = [clean_val(43, c), clean_val(44, c)]
             v_chuyen = [x for x in chuyen if pd.notna(x)]
             v_tre = [x for x in tre if pd.notna(x)]
             if not v_chuyen and not v_tre: return np.nan
             return sum(v_chuyen) - sum(v_tre)
 
-        # MAPPING DỮ LIỆU
+        # MAPPING LẠI DỮ LIỆU THEO TỌA ĐỘ MỚI
         data = {
             "Ngày": [str(i+1) for i in range(num_days)],
-            "Tổng lượng hàng": [clean_val(8, c) for c in cols_to_scan],        
-            "Số đơn Missort": [clean_val(11, c) for c in cols_to_scan],        
-            "Tỷ lệ Missort (%)": [clean_val(12, c) for c in cols_to_scan],     
-            "Tổng nhân sự": [clean_val(15, c) for c in cols_to_scan],          
-            "Tổng trọng lượng (Kg)": [clean_val(9, c) for c in cols_to_scan],  
-            "Backlog tồn đọng": [clean_val(20, c) for c in cols_to_scan],      
+            "Tổng lượng hàng": [clean_val(13, c) for c in cols_to_scan],        # Dòng 14
+            "Số đơn Missort": [clean_val(17, c) for c in cols_to_scan],         # Dòng 18
+            "Tỷ lệ Missort (%)": [clean_val(18, c) for c in cols_to_scan],      # Dòng 19
+            "Tổng nhân sự": [clean_val(24, c) for c in cols_to_scan],           # Dòng 25
+            "Tổng trọng lượng (Kg)": [clean_val(14, c) for c in cols_to_scan],  # Dòng 15
+            "Backlog tồn đọng": [clean_val(33, c) for c in cols_to_scan],       # Dòng 34
             "Xe Sai COT (Tổng)": [get_xe_sai(c) for c in cols_to_scan], 
             "Xe Đúng COT (Tổng)": [get_xe_dung(c) for c in cols_to_scan],
-            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(34, c) for c in cols_to_scan] 
+            "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(46, c) for c in cols_to_scan] # Dòng 47
         }
         
         return pd.DataFrame(data)
