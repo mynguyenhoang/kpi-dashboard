@@ -38,10 +38,9 @@ def get_tenant_access_token():
 def get_data():
     token = get_tenant_access_token()
     if not token:
-        st.error("❌ Không lấy được Token Feishu. Hãy kiểm tra lại APP_ID/SECRET.")
+        st.error("❌ Không lấy được Token Feishu.")
         return pd.DataFrame(), pd.DataFrame()
 
-    # Quét rộng tới dòng 80 để bao trọn Linehaul
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     
@@ -68,32 +67,28 @@ def get_data():
             except:
                 return np.nan
 
-        # --- LOGIC TÌM NGÀY ĐÃ ĐƯỢC FIX ---
-        # Tìm chính xác dòng nào đang chứa chữ "1", "2", "3"... (Trong ảnh là Dòng 4)
-        date_row_idx = -1
+        # TÌM CHÍNH XÁC DÒNG NGÀY THÁNG (Theo ảnh, số 1, 2, 3 nằm ở dòng 4 -> index 3)
+        date_row_idx = 3 
         start_col_idx = -1
         
-        for r in range(min(10, len(vals))):
-            for c in range(len(vals[r])):
-                val = str(vals[r][c]).strip()
-                if val == "1" and c > 2: # Số 1 bắt đầu sau cột Tổng (thường là cột G)
-                    date_row_idx = r
-                    start_col_idx = c
-                    break
-            if date_row_idx != -1: break
+        for c in range(2, len(vals[date_row_idx])):
+            val = str(vals[date_row_idx][c]).strip()
+            if val == "1":
+                start_col_idx = c
+                break
 
-        num_days = 1
-        if date_row_idx != -1:
+        num_days = 26 # Mặc định 26 ngày nếu lỗi
+        if start_col_idx != -1:
             max_day = 1
             for c in range(start_col_idx, len(vals[date_row_idx])):
                 val = str(vals[date_row_idx][c]).strip()
                 if val.isdigit():
                     max_day = max(max_day, int(val))
             num_days = max_day
-            cols_to_scan = [start_col_idx + i for i in range(num_days)]
         else:
-            cols_to_scan = [6 + i for i in range(26)] # Dự phòng mặc định bắt đầu từ cột G, 26 ngày
-            num_days = 26
+            start_col_idx = 6 # Mặc định cột G
+
+        cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
         def extract_hub_data(vol_idx, wgt_idx, ms_idx, ms_rt_idx, fte_idx, bl_idx, chuyen_idxs, tre_idxs, lh_rt_idx):
             data = {
@@ -117,31 +112,31 @@ def get_data():
             }
             return pd.DataFrame(data)
 
-        # MAP CHÍNH XÁC THEO ROW TRÊN EXCEL (Index trong code = Row trên Excel trừ đi 1)
+        # MAPPING CHÍNH XÁC THEO TỌA ĐỘ TRONG EXCEL CỦA BẠN (Index = Dòng - 1)
         # 1. HCM HUB
         df_hcm = extract_hub_data(
-            vol_idx=8,        # Dòng 9: HCM Tổng lượng hàng xử lý
-            wgt_idx=9,        # Dòng 10: HCM Tổng trọng lượng xử lý
-            ms_idx=18,        # Dòng 19: HCM Tổng số đơn Missort
-            ms_rt_idx=19,     # Dòng 20: HCM Tỷ lệ Missort
-            fte_idx=25,       # Dòng 26: HCM Tổng hệ số FTE
-            bl_idx=35,        # Dòng 36: HCM Tổng đơn tồn đọng (Backlog)
-            chuyen_idxs=[44, 45], # Dòng 45, 46: Tổng chuyến Shuttle & Linehaul
-            tre_idxs=[46, 47],    # Dòng 47, 48: Tổng trễ Shuttle & Linehaul
-            lh_rt_idx=49      # Dòng 50: % LH Depart OntimeLinehaul
+            vol_idx=8,        # Dòng 9: Tổng lượng hàng xử lý
+            wgt_idx=9,        # Dòng 10: Tổng trọng lượng xử lý
+            ms_idx=17,        # Dòng 18: Tổng số đơn Missort
+            ms_rt_idx=18,     # Dòng 19: Tỷ lệ Missort
+            fte_idx=23,       # Dòng 24: Tổng hệ số FTE
+            bl_idx=32,        # Dòng 33: Tổng các đơn hàng tồn đọng
+            chuyen_idxs=[40, 41], # Dòng 41, 42: Tổng xe Shuttle, Linehaul
+            tre_idxs=[42, 43],    # Dòng 43, 44: Xe trễ Shuttle, Linehaul
+            lh_rt_idx=45      # Dòng 46: % LH Depart OntimeLinehaul
         )
 
         # 2. BN HUB
         df_bn = extract_hub_data(
-            vol_idx=14,       # Dòng 15: BN Tổng lượng hàng xử lý
-            wgt_idx=15,       # Dòng 16: BN Tổng trọng lượng xử lý
-            ms_idx=21,        # Dòng 22: BN Tổng số đơn Missort
-            ms_rt_idx=22,     # Dòng 23: BN Tỷ lệ Missort
-            fte_idx=31,       # Dòng 32: BN Tổng hệ số FTE
-            bl_idx=36,        # Dòng 37: BN Tổng đơn tồn đọng (Backlog)
-            chuyen_idxs=[53, 54], # Dòng 54, 55: BN Tổng chuyến Shuttle & Linehaul
-            tre_idxs=[55, 56],    # Dòng 56, 57: BN Tổng trễ Shuttle & Linehaul
-            lh_rt_idx=58      # Dòng 59: BN % LH Depart OntimeLinehaul
+            vol_idx=14,       # Dòng 15: Tổng lượng hàng xử lý
+            wgt_idx=15,       # Dòng 16: Tổng trọng lượng xử lý
+            ms_idx=19,        # Dòng 20: Tổng số đơn Missort
+            ms_rt_idx=20,     # Dòng 21: Tỷ lệ Missort
+            fte_idx=26,       # Dòng 27: Tổng hệ số FTE
+            bl_idx=33,        # Dòng 34: Tổng các đơn hàng tồn đọng
+            chuyen_idxs=[49, 50], # Dòng 50, 51: Tổng xe Shuttle, Linehaul
+            tre_idxs=[51, 52],    # Dòng 52, 53: Xe trễ Shuttle, Linehaul
+            lh_rt_idx=54      # Dòng 55: % LH Depart OntimeLinehaul
         )
         
         return df_hcm, df_bn
@@ -155,7 +150,7 @@ st.markdown("<h1 style='text-align: center; font-weight: 800; color: #0f172a; ma
 df_hcm, df_bn = get_data()
 
 if df_hcm.empty and df_bn.empty:
-    st.warning("⚠️ Không tìm thấy dữ liệu. Vui lòng kiểm tra lại cấu trúc file Feishu.")
+    st.warning("⚠️ Không tìm thấy dữ liệu. Vui lòng kiểm tra lại file Feishu.")
     st.stop()
 
 tab1, tab2 = st.tabs(["🏢 HỒ CHÍ MINH HUB", "🏢 BẮC NINH HUB"])
@@ -165,7 +160,6 @@ def render_dashboard(df, primary_color):
         st.info("Chưa có dữ liệu cho Hub này.")
         return
 
-    # TÍNH TOÁN HEADER METRICS CHỈ LẤY CÁC NGÀY CÓ SỐ LIỆU THỰC
     valid_vol = df['Tổng lượng hàng'].dropna()
     total_vol = valid_vol.sum() 
     total_weight = df['Tổng trọng lượng (Kg)'].dropna().sum()
