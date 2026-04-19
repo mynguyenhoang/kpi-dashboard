@@ -41,7 +41,8 @@ def get_data():
         st.error("❌ Không lấy được Token Feishu.")
         return pd.DataFrame(), pd.DataFrame()
 
-    url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
+    # Quét dải rộng lên tới 150 dòng để phòng trường hợp ẩn dòng / chèn thêm dòng
+    url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ150?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     
     try:
@@ -51,12 +52,12 @@ def get_data():
             return pd.DataFrame(), pd.DataFrame()
 
         vals = res.get('data', {}).get('valueRange', {}).get('values', [])
-        if not vals or len(vals) < 60:
+        if not vals:
             return pd.DataFrame(), pd.DataFrame()
 
         def clean_val(row_idx, col_idx):
             try:
-                if row_idx < len(vals) and col_idx < len(vals[row_idx]):
+                if 0 <= row_idx < len(vals) and col_idx < len(vals[row_idx]):
                     v = vals[row_idx][col_idx]
                     if v is None or str(v).strip() == "" or any(err in str(v) for err in ["IF(", "=", "#N/A", "#ERROR"]): 
                         return np.nan
@@ -67,18 +68,23 @@ def get_data():
             except:
                 return np.nan
 
-        # TÌM CHÍNH XÁC DÒNG NGÀY THÁNG (Theo ảnh, số 1, 2, 3 nằm ở dòng 4 -> index 3)
-        date_row_idx = 3 
+        # --- BƯỚC 1: TỰ ĐỘNG TÌM CỘT NGÀY THÁNG (1, 2, 3...) ---
+        date_row_idx = -1
         start_col_idx = -1
         
-        for c in range(2, len(vals[date_row_idx])):
-            val = str(vals[date_row_idx][c]).strip()
-            if val == "1":
-                start_col_idx = c
-                break
+        for r in range(min(15, len(vals))):
+            for c in range(2, len(vals[r])):
+                val = str(vals[r][c]).strip()
+                if val == "1" and c > 2:
+                    # Kiểm tra xem ô tiếp theo có phải là 2 không để tránh nhầm lẫn
+                    if c + 1 < len(vals[r]) and str(vals[r][c+1]).strip() == "2":
+                        date_row_idx = r
+                        start_col_idx = c
+                        break
+            if date_row_idx != -1: break
 
-        num_days = 26 # Mặc định 26 ngày nếu lỗi
-        if start_col_idx != -1:
+        num_days = 26 # Default
+        if date_row_idx != -1:
             max_day = 1
             for c in range(start_col_idx, len(vals[date_row_idx])):
                 val = str(vals[date_row_idx][c]).strip()
@@ -86,58 +92,74 @@ def get_data():
                     max_day = max(max_day, int(val))
             num_days = max_day
         else:
-            start_col_idx = 6 # Mặc định cột G
+            start_col_idx = 6 # Mặc định cột G nếu không tìm thấy
 
         cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
-        def extract_hub_data(vol_idx, wgt_idx, ms_idx, ms_rt_idx, fte_idx, bl_idx, chuyen_idxs, tre_idxs, lh_rt_idx):
+        # --- BƯỚC 2: QUÉT THÔNG MINH (TÌM TỌA ĐỘ BẰNG CHỮ THAY VÌ ĐẾM DÒNG) ---
+        hub_map = ["HCM"] * len(vals)
+        current_hub = "HCM"
+        for r in range(len(vals)):
+            # Đọc 3 cột đầu tiên để xác định đang ở khu vực nào
+            row_str = " ".join([str(x).lower() for x in vals[r][:3] if x is not None])
+            if "bn hub" in row_str:
+                current_hub = "BN"
+            hub_map[r] = current_hub
+
+        def get_idx(hub, primary_kw):
+            """Hàm tự động quét tìm dòng chứa chữ khóa"""
+            for r in range(len(vals)):
+                if hub_map[r] == hub:
+                    row_str = " ".join([str(x).lower() for x in vals[r][:5] if x is not None])
+                    if primary_kw.lower() in row_str:
+                        return r
+            return -1
+
+        # Dò tìm Index tự động cho HCM
+        hcm_vol = get_idx("HCM", "tổng lượng hàng xử lý")
+        hcm_wgt = get_idx("HCM", "tổng trọng lượng xử lý")
+        hcm_ms = get_idx("HCM", "tổng số đơn hàng nhầm tuyến")
+        hcm_fte = get_idx("HCM", "tổng hệ số fte")
+        hcm_bl = get_idx("HCM", "tổng các đơn hàng tồn đọng")
+        hcm_chuyen = get_idx("HCM", "tổng số chuyến xe")
+        hcm_tre = get_idx("HCM", "tổng số chuyến xe xuất phát trễ")
+
+        # Dò tìm Index tự động cho BN
+        bn_vol = get_idx("BN", "tổng lượng hàng xử lý")
+        bn_wgt = get_idx("BN", "tổng trọng lượng xử lý")
+        bn_ms = get_idx("BN", "tổng số đơn hàng nhầm tuyến")
+        bn_fte = get_idx("BN", "tổng hệ số fte")
+        bn_bl = get_idx("BN", "tổng các đơn hàng tồn đọng")
+        bn_chuyen = get_idx("BN", "tổng số chuyến xe")
+        bn_tre = get_idx("BN", "tổng số chuyến xe xuất phát trễ")
+
+        def extract_hub_data(vol_idx, wgt_idx, ms_idx, fte_idx, bl_idx, chuyen_idx, tre_idx):
             data = {
                 "Ngày": [f"Ngày {i+1}" for i in range(num_days)],
                 "Tổng lượng hàng": [clean_val(vol_idx, c) for c in cols_to_scan],
                 "Tổng trọng lượng (Kg)": [clean_val(wgt_idx, c) for c in cols_to_scan],
                 "Số đơn Missort": [clean_val(ms_idx, c) for c in cols_to_scan],
-                "Tỷ lệ Missort (%)": [clean_val(ms_rt_idx, c) for c in cols_to_scan],
+                "Tỷ lệ Missort (%)": [clean_val(ms_idx + 1 if ms_idx != -1 else -1, c) for c in cols_to_scan],
                 "Tổng nhân sự": [clean_val(fte_idx, c) for c in cols_to_scan],
                 "Backlog tồn đọng": [clean_val(bl_idx, c) for c in cols_to_scan],
                 "Xe Sai COT (Tổng)": [
-                    sum(filter(pd.notna, [clean_val(r, c) for r in tre_idxs])) if any(pd.notna(clean_val(r, c)) for r in tre_idxs) else np.nan 
+                    sum(filter(pd.notna, [clean_val(tre_idx, c), clean_val(tre_idx + 1, c)])) if tre_idx != -1 else np.nan 
                     for c in cols_to_scan
                 ],
                 "Xe Đúng COT (Tổng)": [
-                    sum(filter(pd.notna, [clean_val(r, c) for r in chuyen_idxs])) - sum(filter(pd.notna, [clean_val(r, c) for r in tre_idxs]))
-                    if any(pd.notna(clean_val(r, c)) for r in chuyen_idxs) else np.nan 
+                    sum(filter(pd.notna, [clean_val(chuyen_idx, c), clean_val(chuyen_idx + 1, c)])) - 
+                    sum(filter(pd.notna, [clean_val(tre_idx, c), clean_val(tre_idx + 1, c)]))
+                    if chuyen_idx != -1 and tre_idx != -1 else np.nan 
                     for c in cols_to_scan
                 ],
-                "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(lh_rt_idx, c) for c in cols_to_scan]
+                # Tỷ lệ % LH Linehaul nằm cách dòng Trễ Shuttle 3 dòng
+                "Tỷ lệ Linehaul đúng giờ (%)": [clean_val(tre_idx + 3 if tre_idx != -1 else -1, c) for c in cols_to_scan]
             }
             return pd.DataFrame(data)
 
-        # MAPPING CHÍNH XÁC THEO TỌA ĐỘ TRONG EXCEL CỦA BẠN (Index = Dòng - 1)
-        # 1. HCM HUB
-        df_hcm = extract_hub_data(
-            vol_idx=8,        # Dòng 9: Tổng lượng hàng xử lý
-            wgt_idx=9,        # Dòng 10: Tổng trọng lượng xử lý
-            ms_idx=17,        # Dòng 18: Tổng số đơn Missort
-            ms_rt_idx=18,     # Dòng 19: Tỷ lệ Missort
-            fte_idx=23,       # Dòng 24: Tổng hệ số FTE
-            bl_idx=32,        # Dòng 33: Tổng các đơn hàng tồn đọng
-            chuyen_idxs=[40, 41], # Dòng 41, 42: Tổng xe Shuttle, Linehaul
-            tre_idxs=[42, 43],    # Dòng 43, 44: Xe trễ Shuttle, Linehaul
-            lh_rt_idx=45      # Dòng 46: % LH Depart OntimeLinehaul
-        )
-
-        # 2. BN HUB
-        df_bn = extract_hub_data(
-            vol_idx=14,       # Dòng 15: Tổng lượng hàng xử lý
-            wgt_idx=15,       # Dòng 16: Tổng trọng lượng xử lý
-            ms_idx=19,        # Dòng 20: Tổng số đơn Missort
-            ms_rt_idx=20,     # Dòng 21: Tỷ lệ Missort
-            fte_idx=26,       # Dòng 27: Tổng hệ số FTE
-            bl_idx=33,        # Dòng 34: Tổng các đơn hàng tồn đọng
-            chuyen_idxs=[49, 50], # Dòng 50, 51: Tổng xe Shuttle, Linehaul
-            tre_idxs=[51, 52],    # Dòng 52, 53: Xe trễ Shuttle, Linehaul
-            lh_rt_idx=54      # Dòng 55: % LH Depart OntimeLinehaul
-        )
+        # Xuất dữ liệu
+        df_hcm = extract_hub_data(hcm_vol, hcm_wgt, hcm_ms, hcm_fte, hcm_bl, hcm_chuyen, hcm_tre)
+        df_bn = extract_hub_data(bn_vol, bn_wgt, bn_ms, bn_fte, bn_bl, bn_chuyen, bn_tre)
         
         return df_hcm, df_bn
         
@@ -177,10 +199,10 @@ def render_dashboard(df, primary_color):
     final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("📦 Tổng Sản Lượng", f"{int(total_vol):,}".replace(",", "."))
-    c2.metric("⚖️ Tổng Trọng Lượng", f"{int(total_weight):,}".replace(",", ".") + " kg")
-    c3.metric("❌ Tổng Missort", f"{int(total_missort):,}", f"{final_missort_rate:.2f}% tỷ lệ")
-    c4.metric("📦 Tổng Backlog", f"{int(total_backlog):,}")
+    c1.metric("📦 Tổng Sản Lượng", f"{int(total_vol) if pd.notna(total_vol) else 0:,}".replace(",", "."))
+    c2.metric("⚖️ Tổng Trọng Lượng", f"{int(total_weight) if pd.notna(total_weight) else 0:,}".replace(",", ".") + " kg")
+    c3.metric("❌ Tổng Missort", f"{int(total_missort) if pd.notna(total_missort) else 0:,}", f"{final_missort_rate:.2f}% tỷ lệ")
+    c4.metric("📦 Tổng Backlog", f"{int(total_backlog) if pd.notna(total_backlog) else 0:,}")
     c5.metric("🚚 Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -228,7 +250,7 @@ def render_dashboard(df, primary_color):
         fig_bl.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    with st.expander("🔍 Bảng đối soát dữ liệu thô"):
+    with st.expander("🔍 Bảng đối soát dữ liệu thô (Bấm để xem)"):
         df_show = df.set_index("Ngày").T
         df_show = df_show.fillna("")
         st.dataframe(df_show, use_container_width=True)
