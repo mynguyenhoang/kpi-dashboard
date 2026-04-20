@@ -146,7 +146,6 @@ def get_data():
         data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
 
-        # Logistic vận tải - xử lý 0 khi NaN để tránh lỗi tính toán cộng trừ
         lh_c_list = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
         lh_t_list = [clean_val(lht_idx, c) if pd.notna(clean_val(lht_idx, c)) else 0 for c in cols_to_scan]
         sh_c_list = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
@@ -183,7 +182,6 @@ def get_data():
         }
         return pd.DataFrame(data), weekly_summary
 
-    # Update row indices for Total Process Vol and Wgt for each hub
     data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, 38, 40, 39, 41)
     data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, 47, 49, 48, 50)
     
@@ -202,7 +200,6 @@ if df_hcm.empty and df_bn.empty:
 
 tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
 
-# HÀM ĐỊNH DẠNG SỐ: Nếu NaN hoặc rỗng thì trả về chuỗi rỗng để ẩn số 0
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
@@ -237,8 +234,8 @@ def render_dashboard(df, summary, primary_color):
     t_vout = df['Outbound Vol'].sum(skipna=True) 
     t_win = df['Inbound Wgt'].sum(skipna=True) 
     t_wout = df['Outbound Wgt'].sum(skipna=True) 
-    t_tproc_vol = df['Total Process Vol'].sum(skipna=True) # MTD for total volume
-    t_tproc_wgt = df['Total Process Wgt'].sum(skipna=True) # MTD for total weight
+    t_tproc_vol = df['Total Process Vol'].sum(skipna=True)
+    t_tproc_wgt = df['Total Process Wgt'].sum(skipna=True)
     t_ms = df['Missort'].sum(skipna=True)
     t_bl = df['Backlog'].sum(skipna=True)
     
@@ -247,22 +244,19 @@ def render_dashboard(df, summary, primary_color):
     
     lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
-    
     ms_rate_mtd = (t_ms / (t_vin+t_vout) * 100) if (t_vin+t_vout) > 0 else 0
     
     cw = summary
     
-    # 1. HEADER METRICS (MTD) - Update to 6 columns
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Tổng Inbound (MTD) | 入库总量", format_vietnam(t_vin))
     c2.metric("Tổng Outbound (MTD) | 出库总量", format_vietnam(t_vout))
-    c3.metric("Tổng Lượng hàng xử lý (MTD)", format_vietnam(t_tproc_vol)) # Added total volume
-    c4.metric("Tổng trọng lượng (MTD)", format_vietnam(t_tproc_wgt)) # Added total weight
-    c5.metric(f"Tổng Missort (MTD) | 分拣错误 ({ms_rate_mtd:.2f}%)", format_vietnam(t_ms))
-    c6.metric("Tổng Backlog (MTD) | 积压货物", format_vietnam(t_bl))
+    c3.metric("Tổng Lượng xử lý (MTD)", format_vietnam(t_tproc_vol))
+    c4.metric("Tổng trọng lượng (MTD)", format_vietnam(t_tproc_wgt))
+    c5.metric(f"Tổng Missort (MTD) ({ms_rate_mtd:.2f}%)", format_vietnam(t_ms))
+    c6.metric("Tổng Backlog (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 2. BẢNG TỔNG HỢP SONG NGỮ - Keep as it is as the new metrics are already partially present in the detailed table part, but not in WOW summary form. If needed, can add them there too.
     html_table = f"""
     <table class="kpi-table">
         <thead>
@@ -324,8 +318,8 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
     
-    # 3. BIỂU ĐỒ
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Missort | 生产与分拣图表</h4>", unsafe_allow_html=True)
+    # 3. BIỂU ĐỒ - CẬP NHẬT BIỂU ĐỒ NĂNG SUẤT
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Năng Suất | 生产与效率图表</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
     with col_chart1:
         fig_vol = go.Figure()
@@ -333,19 +327,34 @@ def render_dashboard(df, summary, primary_color):
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
         fig_vol.update_layout(title="Sản lượng Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_vol, use_container_width=True)
+        
     with col_chart2:
-        fig_ms = make_subplots(specs=[[{"secondary_y": True}]])
-        fig_ms.add_trace(go.Bar(x=df['Ngày'], y=df['Missort'], name="Số đơn Missort", marker_color='#cbd5e1', opacity=0.8), secondary_y=False)
-        fig_ms.add_trace(go.Scatter(x=df['Ngày'], y=df['Tỷ lệ Missort (%)'], name="Tỷ lệ %", mode='lines+markers', line=dict(color='#ef4444', width=3)), secondary_y=True)
-        fig_ms.update_layout(title_text="Phân tích Missort (Số lượng & Tỷ lệ)", plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        st.plotly_chart(fig_ms, use_container_width=True)
+        # BIỂU ĐỒ NĂNG SUẤT (PRODUCTIVITY) THAY THẾ MISSORT
+        fig_prod = go.Figure()
+        fig_prod.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Total Process Vol'], 
+            name="Sản lượng xử lý",
+            marker_color=primary_color,
+            opacity=0.7
+        ))
+        # Đường line trung bình năng suất
+        mean_val = df['Total Process Vol'].mean()
+        fig_prod.add_hline(y=mean_val, line_dash="dash", line_color="red", annotation_text=f"TB: {mean_val:,.0f}")
+        
+        fig_prod.update_layout(
+            title_text="Phân tích Năng suất xử lý hàng ngày (Productivity)", 
+            plot_bgcolor='white', 
+            margin=dict(t=40, l=10, r=10, b=10), 
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_prod, use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải & Hàng Tồn | 运输与积压监控</h4>", unsafe_allow_html=True)
     col_chart3, col_chart4 = st.columns(2)
     with col_chart3:
         fig_xe = go.Figure()
-        # fillna(0) chỉ dùng cho biểu đồ để không bị đứt đoạn
         fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'].fillna(0)+df['Shuttle Đúng Giờ'].fillna(0), name="Đúng giờ COT", marker_color='#10b981'))
         fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'].fillna(0)+df['Shuttle Trễ'].fillna(0), name="Trễ giờ COT", marker_color='#f43f5e'))
         fig_xe.update_layout(title="Kiểm soát Chuyến xe chạy COT (LH + Shuttle)", barmode='stack', plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
@@ -356,23 +365,17 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.update_layout(plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10))
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    # 5. BẢNG DỮ LIỆU THÔ (FIX ẨN SỐ 0)
+    # 5. BẢNG DỮ LIỆU THÔ
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô | 原始数据</h4>", unsafe_allow_html=True)
     df_show = df.copy()
     rename_map = {
-        "Inbound Vol": "Inbound (đơn) | 入境货物",
-        "Outbound Vol": "Outbound (đơn) | 出境货物",
-        "Inbound Wgt": "Inbound (kg) | 进口重量",
-        "Outbound Wgt": "Outbound (kg) | 出口重量",
-        "Total Process Vol": "Tổng Lượng hàng xử lý (đơn)", # New column display name
-        "Total Process Wgt": "Tổng trọng lượng hàng xử lý (kg)", # New column display name
-        "Missort": "Số đơn Missort | 分拣错误",
-        "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%) | 错误率",
-        "Backlog": "Backlog (đơn) | 积压货物",
-        "LH Đúng Giờ": "LH Đúng Giờ | 干线准时",
-        "LH Trễ": "LH Trễ | 干线延误",
-        "Shuttle Đúng Giờ": "Shuttle Đúng Giờ | 班车准时",
-        "Shuttle Trễ": "Shuttle Trễ | 班车延误"
+        "Inbound Vol": "Inbound (đơn)", "Outbound Vol": "Outbound (đơn)",
+        "Inbound Wgt": "Inbound (kg)", "Outbound Wgt": "Outbound (kg)",
+        "Total Process Vol": "Sản lượng xử lý (đơn)",
+        "Total Process Wgt": "Trọng lượng xử lý (kg)",
+        "Missort": "Số đơn Missort", "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%)",
+        "Backlog": "Backlog (đơn)", "LH Đúng Giờ": "LH Đúng Giờ",
+        "LH Trễ": "LH Trễ", "Shuttle Đúng Giờ": "Shuttle Đúng Giờ", "Shuttle Trễ": "Shuttle Trễ"
     }
     df_show = df_show.rename(columns=rename_map)
     
@@ -381,11 +384,9 @@ def render_dashboard(df, summary, primary_color):
             if "Tỷ lệ" in col:
                 df_show[col] = df_show[col].apply(lambda x: f"{x:.2f}%" if (pd.notna(x) and x != "") else "")
             else:
-                # Áp dụng format_vietnam: Tự động chuyển NaN/0 rỗng thành ""
                 df_show[col] = df_show[col].apply(format_vietnam)
                 
     df_show = df_show.set_index("Ngày").T
-    
     with st.expander("🔍 Bấm vào đây để xem Bảng Chi Tiết Thô Hàng Ngày | 每日原始数据", expanded=True):
         st.dataframe(df_show, use_container_width=True)
 
