@@ -269,7 +269,7 @@ def render_dashboard(df, summary, primary_color):
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', 
                                      mode='lines+text', text=[format_vietnam(v) if v > 2000 else "" for v in df['Inbound Vol']], 
-                                     textfont=dict(size=14, color='black', family="Arial Black"),
+                                     textfont=dict(size=20, color='black', family="Arial Black"),
                                      textposition="top center", line=dict(color='#0ea5e9')))
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
         fig_vol.update_layout(title="Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, b=10), legend=dict(orientation="h", y=1.1))
@@ -280,7 +280,7 @@ def render_dashboard(df, summary, primary_color):
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.8,
                                     text=[format_vietnam(v) for v in df['Total Process Vol']], 
                                     textposition='outside',
-                                    textfont=dict(size=14, color='#1e293b', family="Arial Black")))
+                                    textfont=dict(size=20, color='#1e293b', family="Arial Black")))
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="red")
         fig_prod_v.update_layout(title="Năng suất (Số đơn)", plot_bgcolor='white', yaxis=dict(range=[0, df['Total Process Vol'].max()*1.2]))
         st.plotly_chart(fig_prod_v, use_container_width=True)
