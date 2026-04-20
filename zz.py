@@ -298,17 +298,34 @@ def render_dashboard(df, summary, primary_color):
     
     col4, col5, col6 = st.columns([1, 1, 1])
     
+    # 4. BIỂU ĐỒ VẬN TẢI (MỚI)
+st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải</h4>", unsafe_allow_html=True)
+
+# ===== TÍNH TOÁN =====
+df["Tổng LH"] = df["LH Đúng Giờ"].fillna(0) + df["LH Trễ"].fillna(0)
+df["Tổng Shuttle"] = df["Shuttle Đúng Giờ"].fillna(0) + df["Shuttle Trễ"].fillna(0)
+df["Tổng chuyến"] = df["Tổng LH"] + df["Tổng Shuttle"]
+
+col4, col5, col6 = st.columns([1, 1, 1])
+
     # ===== 1. TỔNG CHUYẾN =====
     with col4:
+        fig_total = go.Figure()
         fig_total.add_trace(go.Bar(
-        x=df['Ngày'], 
-        y=df['Tổng LH'], 
-        name="Linehaul", 
+            x=df['Ngày'], 
+            y=df['Tổng LH'], 
+            name="Linehaul", 
+            marker_color='#10b981',
+            text=df['Tổng LH'],
+            textposition='inside'
         ))
         fig_total.add_trace(go.Bar(
-        x=df['Ngày'], 
-        y=df['Tổng Shuttle'], 
-        name="Linehaul", 
+            x=df['Ngày'], 
+            y=df['Tổng Shuttle'], 
+            name="Shuttle", 
+            marker_color='#3b82f6',
+            text=df['Tổng Shuttle'],
+            textposition='inside'
         ))
         fig_total.update_layout(
             title="Tổng số chuyến xe",
@@ -350,7 +367,7 @@ def render_dashboard(df, summary, primary_color):
             title="Số chuyến xe trễ Shuttle",
             plot_bgcolor='white'
         )
-        st.plotly_chart(fig_sh_late, use_container_width=True)    
+        st.plotly_chart(fig_sh_late, use_container_width=True)
 
     with st.expander("🔍 Chi tiết dữ liệu thô"):
         st.dataframe(df.set_index("Ngày").T, use_container_width=True)
