@@ -295,30 +295,40 @@ def render_dashboard(df, summary, primary_color):
     
     with col1:
         fig_vol = go.Figure()
+        
+        # Đã phóng to size chữ lên 16 và set cliponaxis=False để chữ to không bị cắt
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', mode='lines+text', 
                                      text=[f"<b>{format_vietnam(v)}</b>" if v > 2000 else "" for v in df['Inbound Vol']], 
-                                     textposition="top center", textfont=dict(size=14, color='#0284c7'), line=dict(color='#0ea5e9', width=3)))
+                                     textposition="top center", textfont=dict(size=16, color='#0369a1'), 
+                                     line=dict(color='#0ea5e9', width=3), cliponaxis=False))
+                                     
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot', width=3)))
+        
         fig_vol = clean_layout(fig_vol, "Inbound & Outbound hàng ngày")
-        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=14)))
+        
+        # Thêm headroom (khoảng trống phía trên) để số bự không chạm trần
+        max_y_vol = df['Inbound Vol'].max() * 1.15 if not df['Inbound Vol'].empty else 10000
+        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=14)), yaxis=dict(range=[0, max_y_vol]))
         st.plotly_chart(fig_vol, use_container_width=True)
         
     with col2:
         fig_prod_v = go.Figure()
-        # Phóng to font size lên 16 cho Năng suất (Số đơn)
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.85, 
                                     text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], textposition='outside', textfont=dict(size=16, color='#0f172a')))
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất (Số đơn)")
+        max_y_pv = df['Total Process Vol'].max() * 1.15 if not df['Total Process Vol'].empty else 10000
+        fig_prod_v.update_layout(yaxis=dict(range=[0, max_y_pv]))
         st.plotly_chart(fig_prod_v, use_container_width=True)
         
     with col3:
         fig_prod_w = go.Figure()
-        # Phóng to font size lên 16 cho Năng suất (Trọng lượng)
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.85, 
                                     text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], textposition='outside', textfont=dict(size=16, color='#0f172a')))
         fig_prod_w.add_hline(y=df['Total Process Wgt'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất (Trọng lượng kg)")
+        max_y_pw = df['Total Process Wgt'].max() * 1.15 if not df['Total Process Wgt'].empty else 10000
+        fig_prod_w.update_layout(yaxis=dict(range=[0, max_y_pw]))
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
     # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
@@ -361,7 +371,8 @@ def render_dashboard(df, summary, primary_color):
             textposition='outside', textfont=dict(size=15, color='#0f172a')
         ))
         fig_bl = clean_layout(fig_bl, "Backlog tồn đọng")
-        fig_bl.update_layout(height=450)
+        max_y_bl = df['Backlog'].max() * 1.15 if not df['Backlog'].empty and df['Backlog'].max() > 0 else 10
+        fig_bl.update_layout(height=450, yaxis=dict(range=[0, max_y_bl]))
         st.plotly_chart(fig_bl, use_container_width=True)
 
     # Dòng 2: CHI TIẾT SỐ CHUYẾN TRỄ
