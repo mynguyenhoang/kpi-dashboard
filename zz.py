@@ -285,7 +285,15 @@ def render_dashboard(df, summary, primary_color):
 
     with col_t2:
         fig_cot = go.Figure()
-        fig_cot.add_trace(go.Bar(x=df['Ngày'], y=df['COT Total'], name="Tổng đơn", marker_color='#cbd5e1', opacity=0.4))
+        fig_cot.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['COT Total'], 
+            name="Tổng đơn", 
+            marker_color='#cbd5e1', 
+            opacity=0.4,
+            text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']],
+            textposition='inside'
+        ))
         fig_cot.add_trace(go.Scatter(x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", line=dict(color='#10b981', width=4, shape='spline'), mode='lines+markers+text',
                                      text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], textposition="top center"))
         fig_cot = clean_layout(fig_cot, "% Sent Volume Ontime | 准时出库率 %")
