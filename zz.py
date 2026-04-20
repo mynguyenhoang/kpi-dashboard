@@ -241,7 +241,7 @@ def render_dashboard(df, summary, primary_color):
     with col1:
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', mode='lines+text', 
-                                     text=[f"<b>{format_vietnam(v)}</b>" if v > 2000 else "" for v in df['Inbound Vol']], 
+                                     text=[f"<b>{format_vietnam(v)}</b>" if pd.notna(v) and v > 0 else "" for v in df['Inbound Vol']], 
                                      textposition="top center", textfont=dict(size=14, color='#0369a1'), 
                                      line=dict(color='#0ea5e9', width=3)))
                                      
@@ -255,7 +255,7 @@ def render_dashboard(df, summary, primary_color):
     with col2:
         fig_prod_v = go.Figure()
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.85, 
-                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], 
+                                    text=[f"<b>{format_vietnam(v)}</b>" if pd.notna(v) and v > 0 else "" for v in df['Total Process Vol']], 
                                     textposition='outside', textfont=dict(size=14, color='#0f172a')))
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất (Số đơn)")
@@ -266,7 +266,7 @@ def render_dashboard(df, summary, primary_color):
     with col3:
         fig_prod_w = go.Figure()
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.85, 
-                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], 
+                                    text=[f"<b>{format_vietnam(v)}</b>" if pd.notna(v) and v > 0 else "" for v in df['Total Process Wgt']], 
                                     textposition='outside', textfont=dict(size=14, color='#0f172a')))
         fig_prod_w.add_hline(y=df['Total Process Wgt'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất (Trọng lượng kg)")
@@ -296,7 +296,7 @@ def render_dashboard(df, summary, primary_color):
         df_total = df['Shuttle Chuyến'].fillna(0) + df['Linehaul Chuyến'].fillna(0)
         fig_trans.add_trace(go.Scatter(
             x=df['Ngày'], y=df_total, name="Tổng", mode='text',
-            text=[f"<b>{int(x)}</b>" if x > 0 else "" for x in df_total], 
+            text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df_total], 
             textposition='top center', textfont=dict(size=15, color='#0f172a'),
             showlegend=False, hoverinfo='none'
         ))
@@ -346,31 +346,23 @@ def render_dashboard(df, summary, primary_color):
         fig_lh_late.update_layout(height=400, yaxis=dict(range=[0, max_y_lh]))
         st.plotly_chart(fig_lh_late, use_container_width=True)
 
-    # --- SỬA LỖI PANDAS TYPE ERROR TẠI ĐÂY ---
     with st.expander("🔍 Chi tiết dữ liệu thô"):
-        # Format dữ liệu CỘT trước khi lật ngang (transpose) để tránh lỗi kiểu dữ liệu
         df_display = df.copy()
-        
         for col in df_display.columns:
             if col == "Ngày": 
                 continue
-            
             def clean_format(x, is_pct):
-                # Xóa sạch chữ NaN, None thành ô trống
                 if pd.isna(x) or str(x).strip().lower() in ["none", "nan", ""]:
                     return ""
                 try:
-                    # Ép sang float, nếu là số nguyên tròn trịa (vd 27.0) thì cắt đuôi thành 27
                     f_x = float(x)
                     val_str = str(int(f_x)) if f_x.is_integer() else str(f_x)
-                    # Nếu là cột Tỷ lệ Missort thì thêm %
                     return f"{val_str}%" if is_pct else val_str
                 except:
                     return str(x)
                     
             df_display[col] = df_display[col].apply(lambda x: clean_format(x, col == "Tỷ lệ Missort (%)"))
 
-        # Sau khi mọi cột đã chuẩn text sạch sẽ, lật ngang bảng
         df_raw = df_display.set_index("Ngày").T
         st.dataframe(df_raw, use_container_width=True)
 
