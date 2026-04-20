@@ -10,76 +10,19 @@ import time
 # 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
-    /* Bảng WOW */
-    .kpi-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 30px;
-        background-color: white;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    .kpi-table th {
-        background-color: #1e293b;
-        color: #f8fafc;
-        padding: 14px 16px;
-        text-align: center;
-        border: 1px solid #cbd5e1;
-        font-size: 16px;
-        font-weight: 700;
-    }
-    .kpi-table td {
-        padding: 12px 16px;
-        border: 1px solid #cbd5e1;
-        font-size: 15px;
-        vertical-align: middle;
-    }
+    .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
+    .kpi-table th { background-color: #1e293b; color: #f8fafc; padding: 14px 16px; text-align: center; border: 1px solid #cbd5e1; font-size: 16px; font-weight: 700; }
+    .kpi-table td { padding: 12px 16px; border: 1px solid #cbd5e1; font-size: 15px; vertical-align: middle; }
     .col-pillar { font-weight: 800; text-align: center; background-color: #f8fafc; font-size: 16px; }
     .col-metric { font-weight: 600; color: #334155; }
     .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 16px; font-weight: 600;}
     .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 17px; font-weight: 800; background-color: #f0fdf4; color: #166534; }
-    
-    /* Các thẻ Metric ở trên cùng */
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-        transition: transform 0.2s ease-in-out;
-    }
-    div[data-testid="metric-container"]:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-    }
-    div[data-testid="metric-container"] > div {
-        align-items: center;
-        justify-content: center;
-    }
-    div[data-testid="metric-container"] label {
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        color: #64748b !important;
-    }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
-        font-size: 32px !important;
-        font-weight: 800 !important;
-        color: #0f172a !important;
-    }
-    
-    /* Tiêu đề chính */
-    .main-title {
-        text-align: center; 
-        font-weight: 900; 
-        color: #0f172a; 
-        font-size: 42px;
-        margin-bottom: 40px;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
+    div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); transition: transform 0.2s ease-in-out; }
+    div[data-testid="metric-container"]:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+    div[data-testid="metric-container"] > div { align-items: center; justify-content: center; }
+    div[data-testid="metric-container"] label { font-size: 16px !important; font-weight: 600 !important; color: #64748b !important; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 32px !important; font-weight: 800 !important; color: #0f172a !important; }
+    .main-title { text-align: center; font-weight: 900; color: #0f172a; font-size: 42px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
 </style>""", unsafe_allow_html=True)
 
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
@@ -240,16 +183,21 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
     return f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center; font-size: 15px;'>{wow_str}</td><td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
 
+# HÀM BƠM SIZE CHỮ CỰC ĐẠI VÀ CHỐNG THU NHỎ
 def clean_layout(fig, title):
     fig.update_layout(
         title=dict(text=title, font=dict(size=22, weight='bold', color='#1e293b')),
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin=dict(t=50, b=20, l=10, r=10),
-        xaxis=dict(showgrid=False, tickfont=dict(size=13, color='#64748b')),
-        yaxis=dict(showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=13, color='#64748b'), zeroline=False),
-        hoverlabel=dict(font_size=16, font_family="Arial")
+        margin=dict(t=60, b=20, l=10, r=10),
+        xaxis=dict(showgrid=False, tickfont=dict(size=14, color='#64748b')),
+        yaxis=dict(showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=14, color='#64748b'), zeroline=False),
+        hoverlabel=dict(font_size=16, font_family="Arial"),
+        uniformtext_minsize=18,  # KHÔNG CHO PHÉP CHỮ NHỎ HƠN 18
+        uniformtext_mode='show'  # ÉP HIỂN THỊ DÙ CÓ ĐÈ LÊN NHAU
     )
+    # Tắt cliponaxis để chữ bự không bị lẹm viền
+    fig.update_traces(cliponaxis=False)
     return fig
 
 def render_dashboard(df, summary, primary_color):
@@ -295,40 +243,41 @@ def render_dashboard(df, summary, primary_color):
     
     with col1:
         fig_vol = go.Figure()
-        
-        # Đã phóng to size chữ lên 16 và set cliponaxis=False để chữ to không bị cắt
+        # Chữ size 18 cho Line chart
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', mode='lines+text', 
                                      text=[f"<b>{format_vietnam(v)}</b>" if v > 2000 else "" for v in df['Inbound Vol']], 
-                                     textposition="top center", textfont=dict(size=16, color='#0369a1'), 
-                                     line=dict(color='#0ea5e9', width=3), cliponaxis=False))
+                                     textposition="top center", textfont=dict(size=18, color='#0369a1'), 
+                                     line=dict(color='#0ea5e9', width=3)))
                                      
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot', width=3)))
         
         fig_vol = clean_layout(fig_vol, "Inbound & Outbound hàng ngày")
-        
-        # Thêm headroom (khoảng trống phía trên) để số bự không chạm trần
-        max_y_vol = df['Inbound Vol'].max() * 1.15 if not df['Inbound Vol'].empty else 10000
-        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=14)), yaxis=dict(range=[0, max_y_vol]))
+        max_y_vol = df['Inbound Vol'].max() * 1.25 if not df['Inbound Vol'].empty else 10000
+        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=15)), yaxis=dict(range=[0, max_y_vol]), height=500)
         st.plotly_chart(fig_vol, use_container_width=True)
         
     with col2:
         fig_prod_v = go.Figure()
+        # Chữ size 20 cực to cho Số đơn
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.85, 
-                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], textposition='outside', textfont=dict(size=16, color='#0f172a')))
+                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], 
+                                    textposition='outside', textfont=dict(size=20, color='#0f172a')))
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất (Số đơn)")
-        max_y_pv = df['Total Process Vol'].max() * 1.15 if not df['Total Process Vol'].empty else 10000
-        fig_prod_v.update_layout(yaxis=dict(range=[0, max_y_pv]))
+        max_y_pv = df['Total Process Vol'].max() * 1.25 if not df['Total Process Vol'].empty else 10000
+        fig_prod_v.update_layout(yaxis=dict(range=[0, max_y_pv]), height=500)
         st.plotly_chart(fig_prod_v, use_container_width=True)
         
     with col3:
         fig_prod_w = go.Figure()
+        # Chữ size 20 cực to cho Trọng lượng
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.85, 
-                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], textposition='outside', textfont=dict(size=16, color='#0f172a')))
+                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], 
+                                    textposition='outside', textfont=dict(size=20, color='#0f172a')))
         fig_prod_w.add_hline(y=df['Total Process Wgt'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất (Trọng lượng kg)")
-        max_y_pw = df['Total Process Wgt'].max() * 1.15 if not df['Total Process Wgt'].empty else 10000
-        fig_prod_w.update_layout(yaxis=dict(range=[0, max_y_pw]))
+        max_y_pw = df['Total Process Wgt'].max() * 1.25 if not df['Total Process Wgt'].empty else 10000
+        fig_prod_w.update_layout(yaxis=dict(range=[0, max_y_pw]), height=500)
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
     # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
@@ -341,26 +290,26 @@ def render_dashboard(df, summary, primary_color):
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Chuyến']], 
-            textposition='auto', textfont=dict(size=14, color='white')
+            textposition='inside', textfont=dict(size=18, color='white'), insidetextanchor='middle'
         ))
         
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Chuyến']], 
-            textposition='auto', textfont=dict(size=14, color='white')
+            textposition='inside', textfont=dict(size=18, color='white'), insidetextanchor='middle'
         ))
         
         df_total = df['Shuttle Chuyến'].fillna(0) + df['Linehaul Chuyến'].fillna(0)
         fig_trans.add_trace(go.Scatter(
             x=df['Ngày'], y=df_total, name="Tổng", mode='text',
             text=[f"<b>{int(x)}</b>" if x > 0 else "" for x in df_total], 
-            textposition='top center', textfont=dict(size=16, color='#0f172a'),
+            textposition='top center', textfont=dict(size=22, color='#0f172a'),
             showlegend=False, hoverinfo='none'
         ))
         
         fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul)")
-        max_y = df_total.max() * 1.15 if df_total.max() > 0 else 10
-        fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=15)), height=450, yaxis=dict(range=[0, max_y]))
+        max_y = df_total.max() * 1.25 if df_total.max() > 0 else 10
+        fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=16)), height=500, yaxis=dict(range=[0, max_y]))
         st.plotly_chart(fig_trans, use_container_width=True)
 
     with col_t2:
@@ -368,11 +317,11 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.add_trace(go.Bar(
             x=df['Ngày'], y=df['Backlog'], marker_color='#f59e0b',
             text=[f"<b>{format_vietnam(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Backlog']],
-            textposition='outside', textfont=dict(size=15, color='#0f172a')
+            textposition='outside', textfont=dict(size=20, color='#0f172a')
         ))
         fig_bl = clean_layout(fig_bl, "Backlog tồn đọng")
-        max_y_bl = df['Backlog'].max() * 1.15 if not df['Backlog'].empty and df['Backlog'].max() > 0 else 10
-        fig_bl.update_layout(height=450, yaxis=dict(range=[0, max_y_bl]))
+        max_y_bl = df['Backlog'].max() * 1.25 if not df['Backlog'].empty and df['Backlog'].max() > 0 else 10
+        fig_bl.update_layout(height=500, yaxis=dict(range=[0, max_y_bl]))
         st.plotly_chart(fig_bl, use_container_width=True)
 
     # Dòng 2: CHI TIẾT SỐ CHUYẾN TRỄ
@@ -384,11 +333,11 @@ def render_dashboard(df, summary, primary_color):
         fig_sh_late.add_trace(go.Bar(
             x=df['Ngày'], y=df['Shuttle Late'], marker_color='#ef4444',
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Late']],
-            textposition='outside', textfont=dict(size=16, color='#b91c1c')
+            textposition='outside', textfont=dict(size=22, color='#b91c1c')
         ))
         fig_sh_late = clean_layout(fig_sh_late, "Shuttle Xuất Phát Trễ")
-        max_y_sh = df['Shuttle Late'].max() * 1.2 if df['Shuttle Late'].max() > 0 else 5
-        fig_sh_late.update_layout(height=350, yaxis=dict(range=[0, max_y_sh]))
+        max_y_sh = df['Shuttle Late'].max() * 1.25 if df['Shuttle Late'].max() > 0 else 5
+        fig_sh_late.update_layout(height=400, yaxis=dict(range=[0, max_y_sh]))
         st.plotly_chart(fig_sh_late, use_container_width=True)
 
     with col_l2:
@@ -396,11 +345,11 @@ def render_dashboard(df, summary, primary_color):
         fig_lh_late.add_trace(go.Bar(
             x=df['Ngày'], y=df['Linehaul Late'], marker_color='#f43f5e',
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Late']],
-            textposition='outside', textfont=dict(size=16, color='#be123c')
+            textposition='outside', textfont=dict(size=22, color='#be123c')
         ))
         fig_lh_late = clean_layout(fig_lh_late, "Linehaul Xuất Phát Trễ")
-        max_y_lh = df['Linehaul Late'].max() * 1.2 if df['Linehaul Late'].max() > 0 else 5
-        fig_lh_late.update_layout(height=350, yaxis=dict(range=[0, max_y_lh]))
+        max_y_lh = df['Linehaul Late'].max() * 1.25 if df['Linehaul Late'].max() > 0 else 5
+        fig_lh_late.update_layout(height=400, yaxis=dict(range=[0, max_y_lh]))
         st.plotly_chart(fig_lh_late, use_container_width=True)
 
     with st.expander("🔍 Chi tiết dữ liệu thô"):
