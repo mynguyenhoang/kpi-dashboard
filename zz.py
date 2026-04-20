@@ -9,8 +9,7 @@ import time
 
 # 1. CẤU HÌNH TRANG & CSS
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
-st.markdown("""
-<style>
+st.markdown("""<style>
     .kpi-table {
         width: 100%;
         border-collapse: collapse;
@@ -47,8 +46,7 @@ st.markdown("""
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
 def get_tenant_access_token():
@@ -69,9 +67,10 @@ def get_data():
     if not token:
         st.error("Không lấy được Token Feishu.")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-
+    
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
+    
     max_retries = 3
     res_data = None
     for attempt in range(max_retries):
@@ -90,6 +89,7 @@ def get_data():
                 return (pd.DataFrame(), {}), (pd.DataFrame(), {})
         except Exception as e:
             return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+
     if not res_data:
         return (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
@@ -113,12 +113,14 @@ def get_data():
 
     weekly_col_idxs = [3, 4, 5, 6] 
     date_row_idx = 3 
+    
     start_col_idx = -1
     for c in range(2, len(vals[date_row_idx])):
         val = str(vals[date_row_idx][c]).strip()
         if val == "1":
             start_col_idx = c
             break
+    
     num_days = 26 
     if start_col_idx != -1:
         max_day = 1
@@ -132,12 +134,14 @@ def get_data():
 
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
-    def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
+    def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
         data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
         data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
         data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
+        data["Total Process Vol"] = [clean_val(tproc_vol_idx, c) for c in cols_to_scan]
+        data["Total Process Wgt"] = [clean_val(tproc_wgt_idx, c) for c in cols_to_scan]
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
         data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
@@ -170,6 +174,8 @@ def get_data():
             "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_win": clean_val(win_idx, cw_idx) if cw_idx != -1 else 0, "pw_win": clean_val(win_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_wout": clean_val(wout_idx, cw_idx) if wout_idx != -1 else 0, "pw_wout": clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_tproc_vol": clean_val(tproc_vol_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_vol": clean_val(tproc_vol_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx), "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
@@ -177,12 +183,15 @@ def get_data():
         }
         return pd.DataFrame(data), weekly_summary
 
-    data_hcm = extract_hub_data(4, 5, 6, 7, 17, 18, 31, 38, 40, 39, 41)
-    data_bn = extract_hub_data(10, 11, 12, 13, 19, 20, 32, 47, 49, 48, 50)
+    # Update row indices for Total Process Vol and Wgt for each hub
+    data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, 38, 40, 39, 41)
+    data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, 47, 49, 48, 50)
+    
     return data_hcm, data_bn
 
 # 3. GIAO DIỆN HIỂN THỊ CHUNG
 st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
+
 data_hcm, data_bn = get_data()
 df_hcm, sum_hcm = data_hcm
 df_bn, sum_bn = data_bn
@@ -204,6 +213,7 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
         return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
     diff = cur - prev
     pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
+    
     if diff > 0:
         bg_color, text_color, sign = "#dcfce7", "#15803d", "+"
         if inverse: bg_color, text_color = "#fee2e2", "#b91c1c"
@@ -212,36 +222,47 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
         if inverse: bg_color, text_color = "#dcfce7", "#15803d"
     else:
         bg_color, text_color, sign = "transparent", "#333", ""
+        
     wow_str = f"{sign}{pct:.0f}%" if not is_pct else f"{sign}{diff:.1f}%"
     cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
     prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
+    
     wow_td = f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center;'>{wow_str}</td>"
     return wow_td + f"<td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
 
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
+    
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
     t_win = df['Inbound Wgt'].sum(skipna=True) 
     t_wout = df['Outbound Wgt'].sum(skipna=True) 
+    t_tproc_vol = df['Total Process Vol'].sum(skipna=True) # MTD for total volume
+    t_tproc_wgt = df['Total Process Wgt'].sum(skipna=True) # MTD for total weight
     t_ms = df['Missort'].sum(skipna=True)
     t_bl = df['Backlog'].sum(skipna=True)
+    
     lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
     sh_total = df['Shuttle Đúng Giờ'].fillna(0).sum() + df['Shuttle Trễ'].fillna(0).sum()
+    
     lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
+    
     ms_rate_mtd = (t_ms / (t_vin+t_vout) * 100) if (t_vin+t_vout) > 0 else 0
+    
     cw = summary
-
-    # 1. HEADER METRICS (MTD)
-    c1, c2, c3, c4 = st.columns(4)
+    
+    # 1. HEADER METRICS (MTD) - Update to 6 columns
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Tổng Inbound (MTD) | 入库总量", format_vietnam(t_vin))
     c2.metric("Tổng Outbound (MTD) | 出库总量", format_vietnam(t_vout))
-    c3.metric(f"Tổng Missort (MTD) | 分拣错误 ({ms_rate_mtd:.2f}%)", format_vietnam(t_ms))
-    c4.metric("Tổng Backlog (MTD) | 积压货物", format_vietnam(t_bl))
+    c3.metric("Tổng Lượng hàng xử lý (MTD)", format_vietnam(t_tproc_vol)) # Added total volume
+    c4.metric("Tổng trọng lượng (MTD)", format_vietnam(t_tproc_wgt)) # Added total weight
+    c5.metric(f"Tổng Missort (MTD) | 分拣错误 ({ms_rate_mtd:.2f}%)", format_vietnam(t_ms))
+    c6.metric("Tổng Backlog (MTD) | 积压货物", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # 2. BẢNG TỔNG HỢP SONG NGỮ
+    
+    # 2. BẢNG TỔNG HỢP SONG NGỮ - Keep as it is as the new metrics are already partially present in the detailed table part, but not in WOW summary form. If needed, can add them there too.
     html_table = f"""
     <table class="kpi-table">
         <thead>
@@ -302,7 +323,7 @@ def render_dashboard(df, summary, primary_color):
     </table>
     """
     st.markdown(html_table, unsafe_allow_html=True)
-
+    
     # 3. BIỂU ĐỒ
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Missort | 生产与分拣图表</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
@@ -343,6 +364,8 @@ def render_dashboard(df, summary, primary_color):
         "Outbound Vol": "Outbound (đơn) | 出境货物",
         "Inbound Wgt": "Inbound (kg) | 进口重量",
         "Outbound Wgt": "Outbound (kg) | 出口重量",
+        "Total Process Vol": "Tổng Lượng hàng xử lý (đơn)", # New column display name
+        "Total Process Wgt": "Tổng trọng lượng hàng xử lý (kg)", # New column display name
         "Missort": "Số đơn Missort | 分拣错误",
         "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%) | 错误率",
         "Backlog": "Backlog (đơn) | 积压货物",
@@ -352,6 +375,7 @@ def render_dashboard(df, summary, primary_color):
         "Shuttle Trễ": "Shuttle Trễ | 班车延误"
     }
     df_show = df_show.rename(columns=rename_map)
+    
     for col in df_show.columns:
         if col != "Ngày":
             if "Tỷ lệ" in col:
@@ -359,12 +383,14 @@ def render_dashboard(df, summary, primary_color):
             else:
                 # Áp dụng format_vietnam: Tự động chuyển NaN/0 rỗng thành ""
                 df_show[col] = df_show[col].apply(format_vietnam)
-
+                
     df_show = df_show.set_index("Ngày").T
+    
     with st.expander("🔍 Bấm vào đây để xem Bảng Chi Tiết Thô Hàng Ngày | 每日原始数据", expanded=True):
         st.dataframe(df_show, use_container_width=True)
 
 with tab1:
     render_dashboard(df_hcm, sum_hcm, "#0284c7") 
+    
 with tab2:
     render_dashboard(df_bn, sum_bn, "#059669")
