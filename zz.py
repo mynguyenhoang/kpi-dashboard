@@ -221,7 +221,7 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE
+    # 2. WOW TABLE - Đã thêm Trọng lượng (kg)
     st.markdown(f"""<table class="kpi-table">
         <thead><tr><th>KPI</th><th>Hạng mục</th><th style="width:110px;">WOW</th><th>Tuần này</th><th>Tuần trước</th><th>MTD</th></tr></thead>
         <tbody>
@@ -242,36 +242,36 @@ def render_dashboard(df, summary, primary_color):
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', mode='lines+text', 
                                      text=[f"<b>{format_vietnam(v)}</b>" if v > 2000 else "" for v in df['Inbound Vol']], 
-                                     textposition="top center", textfont=dict(size=14, color='#0369a1'), 
+                                     textposition="top center", textfont=dict(size=18, color='#0369a1'), 
                                      line=dict(color='#0ea5e9', width=3)))
                                      
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot', width=3)))
         
         fig_vol = clean_layout(fig_vol, "Inbound & Outbound hàng ngày")
         max_y_vol = df['Inbound Vol'].max() * 1.25 if not df['Inbound Vol'].empty else 10000
-        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=13)), yaxis=dict(range=[0, max_y_vol]), height=480)
+        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=15)), yaxis=dict(range=[0, max_y_vol]), height=500)
         st.plotly_chart(fig_vol, use_container_width=True)
         
     with col2:
         fig_prod_v = go.Figure()
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.85, 
                                     text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], 
-                                    textposition='outside', textfont=dict(size=14, color='#0f172a')))
+                                    textposition='outside', textfont=dict(size=18, color='#0f172a')))
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất (Số đơn)")
         max_y_pv = df['Total Process Vol'].max() * 1.25 if not df['Total Process Vol'].empty else 10000
-        fig_prod_v.update_layout(yaxis=dict(range=[0, max_y_pv]), height=480)
+        fig_prod_v.update_layout(yaxis=dict(range=[0, max_y_pv]), height=500)
         st.plotly_chart(fig_prod_v, use_container_width=True)
         
     with col3:
         fig_prod_w = go.Figure()
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.85, 
                                     text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], 
-                                    textposition='outside', textfont=dict(size=14, color='#0f172a')))
+                                    textposition='outside', textfont=dict(size=18, color='#0f172a')))
         fig_prod_w.add_hline(y=df['Total Process Wgt'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất (Trọng lượng kg)")
         max_y_pw = df['Total Process Wgt'].max() * 1.25 if not df['Total Process Wgt'].empty else 10000
-        fig_prod_w.update_layout(yaxis=dict(range=[0, max_y_pw]), height=480)
+        fig_prod_w.update_layout(yaxis=dict(range=[0, max_y_pw]), height=500)
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
     # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
@@ -284,26 +284,26 @@ def render_dashboard(df, summary, primary_color):
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Chuyến']], 
-            textposition='inside', textfont=dict(size=13, color='white'), insidetextanchor='middle'
+            textposition='inside', textfont=dict(size=16, color='white'), insidetextanchor='middle'
         ))
         
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Chuyến']], 
-            textposition='inside', textfont=dict(size=13, color='white'), insidetextanchor='middle'
+            textposition='inside', textfont=dict(size=16, color='white'), insidetextanchor='middle'
         ))
         
         df_total = df['Shuttle Chuyến'].fillna(0) + df['Linehaul Chuyến'].fillna(0)
         fig_trans.add_trace(go.Scatter(
             x=df['Ngày'], y=df_total, name="Tổng", mode='text',
             text=[f"<b>{int(x)}</b>" if x > 0 else "" for x in df_total], 
-            textposition='top center', textfont=dict(size=15, color='#0f172a'),
+            textposition='top center', textfont=dict(size=18, color='#0f172a'),
             showlegend=False, hoverinfo='none'
         ))
         
         fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul)")
         max_y = df_total.max() * 1.25 if df_total.max() > 0 else 10
-        fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=14)), height=480, yaxis=dict(range=[0, max_y]))
+        fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=15)), height=500, yaxis=dict(range=[0, max_y]))
         st.plotly_chart(fig_trans, use_container_width=True)
 
     with col_t2:
@@ -311,11 +311,11 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.add_trace(go.Bar(
             x=df['Ngày'], y=df['Backlog'], marker_color='#f59e0b',
             text=[f"<b>{format_vietnam(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Backlog']],
-            textposition='outside', textfont=dict(size=14, color='#0f172a')
+            textposition='outside', textfont=dict(size=16, color='#0f172a')
         ))
         fig_bl = clean_layout(fig_bl, "Backlog tồn đọng")
         max_y_bl = df['Backlog'].max() * 1.25 if not df['Backlog'].empty and df['Backlog'].max() > 0 else 10
-        fig_bl.update_layout(height=480, yaxis=dict(range=[0, max_y_bl]))
+        fig_bl.update_layout(height=500, yaxis=dict(range=[0, max_y_bl]))
         st.plotly_chart(fig_bl, use_container_width=True)
 
     # Dòng 2: CHI TIẾT SỐ CHUYẾN TRỄ
@@ -327,7 +327,7 @@ def render_dashboard(df, summary, primary_color):
         fig_sh_late.add_trace(go.Bar(
             x=df['Ngày'], y=df['Shuttle Late'], marker_color='#ef4444',
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Late']],
-            textposition='outside', textfont=dict(size=15, color='#b91c1c')
+            textposition='outside', textfont=dict(size=18, color='#b91c1c')
         ))
         fig_sh_late = clean_layout(fig_sh_late, "Shuttle Xuất Phát Trễ")
         max_y_sh = df['Shuttle Late'].max() * 1.25 if df['Shuttle Late'].max() > 0 else 5
@@ -339,16 +339,19 @@ def render_dashboard(df, summary, primary_color):
         fig_lh_late.add_trace(go.Bar(
             x=df['Ngày'], y=df['Linehaul Late'], marker_color='#f43f5e',
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Late']],
-            textposition='outside', textfont=dict(size=15, color='#be123c')
+            textposition='outside', textfont=dict(size=18, color='#be123c')
         ))
         fig_lh_late = clean_layout(fig_lh_late, "Linehaul Xuất Phát Trễ")
         max_y_lh = df['Linehaul Late'].max() * 1.25 if df['Linehaul Late'].max() > 0 else 5
         fig_lh_late.update_layout(height=400, yaxis=dict(range=[0, max_y_lh]))
         st.plotly_chart(fig_lh_late, use_container_width=True)
 
-    # --- SỬA LẠI PHẦN HIỂN THỊ DỮ LIỆU THÔ ---
+    # --- SỬA LẠI PHẦN HIỂN THỊ DỮ LIỆU THÔ (BỎ LỖI TYPE ERROR, XÓA NONE) ---
     with st.expander("🔍 Chi tiết dữ liệu thô"):
         df_raw = df.copy().set_index("Ngày").T
+        
+        # Ép kiểu toàn bộ dataframe về object (chuỗi/hỗn hợp) để không bị lỗi Type khi thêm dấu %
+        df_raw = df_raw.astype(object)
         
         # 1. Dọn sạch None và làm tròn số thập phân vô nghĩa (VD: 27.0 -> 27)
         for col in df_raw.columns:
@@ -361,7 +364,7 @@ def render_dashboard(df, summary, primary_color):
         # 2. Thêm ký hiệu % cho dòng Tỷ lệ Missort
         if "Tỷ lệ Missort (%)" in df_raw.index:
             df_raw.loc["Tỷ lệ Missort (%)"] = df_raw.loc["Tỷ lệ Missort (%)"].apply(
-                lambda x: f"{x}%" if x != "" else ""
+                lambda x: f"{x}%" if str(x).strip() != "" else ""
             )
             
         st.dataframe(df_raw, use_container_width=True)
