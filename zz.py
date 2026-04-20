@@ -271,7 +271,9 @@ def render_dashboard(df, summary, primary_color):
 
     # 4. BIỂU ĐỒ VẬN TẢI & COT (%)
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 40px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & COT | 运输与准时出库管理</h3>", unsafe_allow_html=True)
-    col_t1, col_t2 = st.columns([2, 1.2])
+    
+    # SỬA Ở ĐÂY: Chia tỉ lệ cột 50/50 (bằng nhau)
+    col_t1, col_t2 = st.columns(2) 
     
     with col_t1:
         fig_trans = go.Figure()
