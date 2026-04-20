@@ -193,7 +193,6 @@ def clean_layout(fig, title):
         yaxis=dict(showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=14, color='#64748b'), zeroline=False),
         hoverlabel=dict(font_size=15, font_family="Arial")
     )
-    # Bật cliponaxis=False để chữ to trên đỉnh cột KHÔNG BAO GIỜ bị cắt mất
     fig.update_traces(cliponaxis=False)
     return fig
 
@@ -222,7 +221,7 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE - Đã thêm Trọng lượng (kg)
+    # 2. WOW TABLE
     st.markdown(f"""<table class="kpi-table">
         <thead><tr><th>KPI</th><th>Hạng mục</th><th style="width:110px;">WOW</th><th>Tuần này</th><th>Tuần trước</th><th>MTD</th></tr></thead>
         <tbody>
@@ -347,8 +346,25 @@ def render_dashboard(df, summary, primary_color):
         fig_lh_late.update_layout(height=400, yaxis=dict(range=[0, max_y_lh]))
         st.plotly_chart(fig_lh_late, use_container_width=True)
 
+    # --- SỬA LẠI PHẦN HIỂN THỊ DỮ LIỆU THÔ ---
     with st.expander("🔍 Chi tiết dữ liệu thô"):
-        st.dataframe(df.set_index("Ngày").T, use_container_width=True)
+        df_raw = df.copy().set_index("Ngày").T
+        
+        # 1. Dọn sạch None và làm tròn số thập phân vô nghĩa (VD: 27.0 -> 27)
+        for col in df_raw.columns:
+            df_raw[col] = df_raw[col].apply(
+                lambda x: "" if pd.isna(x) or str(x).strip().lower() in ["none", "nan"] else (
+                    int(x) if isinstance(x, (int, float)) and float(x).is_integer() else x
+                )
+            )
+            
+        # 2. Thêm ký hiệu % cho dòng Tỷ lệ Missort
+        if "Tỷ lệ Missort (%)" in df_raw.index:
+            df_raw.loc["Tỷ lệ Missort (%)"] = df_raw.loc["Tỷ lệ Missort (%)"].apply(
+                lambda x: f"{x}%" if x != "" else ""
+            )
+            
+        st.dataframe(df_raw, use_container_width=True)
 
 with tab1:
     render_dashboard(df_hcm, sum_hcm, "#0284c7") 
