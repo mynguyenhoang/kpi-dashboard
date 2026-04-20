@@ -10,14 +10,15 @@ import time
 # 1. CONFIG
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS giữ nguyên
-st.markdown("""<style>
+st.markdown("""
+<style>
 .kpi-table {width:100%;border-collapse:collapse;margin-bottom:30px;background:white;}
 .kpi-table th {background:#1f2937;color:white;padding:10px;text-align:center;}
 .kpi-table td {padding:10px;border:1px solid #d1d5db;}
 .col-pillar {font-weight:bold;text-align:center;background:#f8fafc;}
 .col-mtd {font-weight:bold;background:#f0fdf4;}
-</style>""", unsafe_allow_html=True)
+</style>
+""", unsafe_allow_html=True)
 
 # 2. TOKEN
 def get_tenant_access_token():
@@ -56,7 +57,7 @@ def get_data():
         except:
             return np.nan
 
-    # ===== FIX 1: tìm dynamic ngày =====
+    # ===== DATE DETECT =====
     date_row_idx = 3
     start_col_idx = -1
     for c in range(len(vals[date_row_idx])):
@@ -65,12 +66,16 @@ def get_data():
             break
 
     num_days = 31
+    if start_col_idx == -1:
+        start_col_idx = 6
+
+    # ===== FIX MTD: chỉ lấy cột có data =====
     cols_to_scan = [
         c for c in range(start_col_idx, start_col_idx + num_days)
         if any(pd.notna(clean_val(r, c)) for r in [4,5,6])
     ]
 
-    # ===== FIX 2: tìm cột tuần =====
+    # ===== FIX WEEK =====
     weekly_col_idxs = []
     for c in range(len(vals[2])):
         val = str(vals[2][c]).lower()
@@ -78,7 +83,7 @@ def get_data():
             weekly_col_idxs.append(c)
 
     if len(weekly_col_idxs) < 2:
-        weekly_col_idxs = list(range(2, 8))  # fallback nhẹ
+        weekly_col_idxs = [3,4,5,6]
 
     def extract(vin, vout, win, wout, ms, ms_rt, bl, lhc, lht, shc, sht):
         df = pd.DataFrame()
@@ -91,13 +96,17 @@ def get_data():
         df["Tỷ lệ Missort (%)"] = [clean_val(ms_rt, c) for c in cols_to_scan]
         df["Backlog"] = [clean_val(bl, c) for c in cols_to_scan]
 
-        lh_c = [clean_val(lhc, c) or 0 for c in cols_to_scan]
-        lh_t = [clean_val(lht, c) or 0 for c in cols_to_scan]
+        lh_c = [clean_val(lhc, c) if pd.notna(clean_val(lhc, c)) else 0 for c in cols_to_scan]
+        lh_t = [clean_val(lht, c) if pd.notna(clean_val(lht, c)) else 0 for c in cols_to_scan]
+        sh_c = [clean_val(shc, c) if pd.notna(clean_val(shc, c)) else 0 for c in cols_to_scan]
+        sh_t = [clean_val(sht, c) if pd.notna(clean_val(sht, c)) else 0 for c in cols_to_scan]
 
-        df["LH Đúng Giờ"] = [c - t if c > 0 else np.nan for c, t in zip(lh_c, lh_t)]
-        df["LH Trễ"] = [t if t > 0 else np.nan for c, t in zip(lh_c, lh_t)]
+        df["LH Đúng Giờ"] = [(c - t) if c > 0 else np.nan for c, t in zip(lh_c, lh_t)]
+        df["LH Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(lh_c, lh_t)]
+        df["Shuttle Đúng Giờ"] = [(c - t) if c > 0 else np.nan for c, t in zip(sh_c, sh_t)]
+        df["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c, sh_t)]
 
-        # ===== FIX 3: CW / PW =====
+        # ===== FIX CW/PW =====
         valid_weeks = [
             idx for idx in weekly_col_idxs
             if pd.notna(clean_val(vin, idx)) and clean_val(vin, idx) > 0
@@ -105,6 +114,14 @@ def get_data():
 
         cw = valid_weeks[-1] if len(valid_weeks) else -1
         pw = valid_weeks[-2] if len(valid_weeks) > 1 else -1
+
+        def get_ot_rate(c_idx, t_idx, col_idx):
+            if col_idx == -1: return 0
+            chuyen = clean_val(c_idx, col_idx)
+            tre = clean_val(t_idx, col_idx)
+            if pd.isna(chuyen) or chuyen == 0: return 0
+            tre = 0 if pd.isna(tre) else tre
+            return ((chuyen - tre) / chuyen) * 100
 
         summary = {
             "cw_vin": clean_val(vin, cw) if cw != -1 else 0,
@@ -116,7 +133,7 @@ def get_data():
             "cw_win": clean_val(win, cw) if cw != -1 else 0,
             "pw_win": clean_val(win, pw) if pw != -1 else 0,
 
-            # FIX BUG CHÍNH
+            # FIX BUG
             "cw_wout": clean_val(wout, cw) if cw != -1 else 0,
             "pw_wout": clean_val(wout, pw) if pw != -1 else 0,
 
@@ -125,6 +142,12 @@ def get_data():
 
             "cw_bl": clean_val(bl, cw) if cw != -1 else 0,
             "pw_bl": clean_val(bl, pw) if pw != -1 else 0,
+
+            "cw_lhot": get_ot_rate(lhc, lht, cw),
+            "pw_lhot": get_ot_rate(lhc, lht, pw),
+
+            "cw_shot": get_ot_rate(shc, sht, cw),
+            "pw_shot": get_ot_rate(shc, sht, pw),
         }
 
         return df, summary
@@ -134,19 +157,22 @@ def get_data():
 
     return data_hcm, data_bn
 
-
 # ===== UI =====
 st.title("J&T KPI Dashboard")
 
 data_hcm, data_bn = get_data()
-df, sum_data = data_hcm
+df, summary = data_hcm
 
-# ===== MTD đúng =====
-t_vin = df["Inbound Vol"].sum(skipna=True)
-t_vout = df["Outbound Vol"].sum(skipna=True)
+if df.empty:
+    st.warning("No data")
+    st.stop()
+
+# ===== MTD chuẩn =====
+t_vin = df['Inbound Vol'].sum(skipna=True)
+t_vout = df['Outbound Vol'].sum(skipna=True)
 
 st.metric("Inbound MTD", f"{t_vin:,.0f}")
 st.metric("Outbound MTD", f"{t_vout:,.0f}")
 
-fig = px.line(df, x="Ngày", y=["Inbound Vol", "Outbound Vol"])
+fig = px.line(df, x="Ngày", y=["Inbound Vol","Outbound Vol"])
 st.plotly_chart(fig, use_container_width=True)
