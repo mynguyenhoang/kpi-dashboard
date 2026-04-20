@@ -23,22 +23,33 @@ st.markdown("""
     .kpi-table th {
         background-color: #1f2937;
         color: white;
-        padding: 12px;
+        padding: 10px 12px;
         text-align: center;
         border: 1px solid #d1d5db;
         font-size: 14px;
         font-weight: bold;
+        line-height: 1.4;
     }
     .kpi-table td {
         padding: 10px 12px;
         border: 1px solid #d1d5db;
         font-size: 14px;
         vertical-align: middle;
+        line-height: 1.4;
     }
     .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
     .col-metric { font-weight: 600; color: #1e293b; }
     .col-num { text-align: right; font-family: monospace; font-size: 15px; }
     .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }
+    
+    /* CSS cho Metric Box */
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -109,7 +120,7 @@ def get_data():
         except:
             return np.nan
 
-    weekly_col_idxs = [3, 4, 5, 6] # Cột D, E, F, G (W15, W16, W17, W18)
+    weekly_col_idxs = [3, 4, 5, 6] 
 
     date_row_idx = 3 
     start_col_idx = -1
@@ -168,10 +179,9 @@ def get_data():
             if pd.notna(val) and val > 0:
                 valid_weeks.append(idx)
         
-        # Nếu có từ 2 tuần trở lên, lấy 2 tuần cuối cùng có số
         if len(valid_weeks) >= 2:
-            cw_idx = valid_weeks[-1]  # Tuần này
-            pw_idx = valid_weeks[-2]  # Tuần trước
+            cw_idx = valid_weeks[-1]  
+            pw_idx = valid_weeks[-2]  
         elif len(valid_weeks) == 1:
             cw_idx = valid_weeks[0]
             pw_idx = -1
@@ -201,7 +211,6 @@ def get_data():
 
         return pd.DataFrame(data), weekly_summary
 
-    # Lấy đúng dòng Tổng Inbound (Dòng 5 cho HCM, Dòng 11 cho BN)
     data_hcm = extract_hub_data(vol_idx=4, wgt_idx=6, ms_idx=17, ms_rt_idx=18, fte_idx=23, bl_idx=31, chuyen_idxs=[38, 39], tre_idxs=[40, 41], lh_rt_idx=43)
     data_bn = extract_hub_data(vol_idx=10, wgt_idx=12, ms_idx=19, ms_rt_idx=20, fte_idx=26, bl_idx=32, chuyen_idxs=[47, 48], tre_idxs=[49, 50], lh_rt_idx=52)
     
@@ -225,10 +234,7 @@ def format_vietnam(number):
     return f"{number:,.0f}".replace(",", ".")
 
 def get_wow_cell(cur, prev, is_pct=False, inverse=False):
-    """
-    Tăng = Xanh, Giảm = Đỏ
-    Nếu inverse=True (dùng cho Missort/Backlog): Tăng = Đỏ, Giảm = Xanh
-    """
+    """ Tăng = Xanh, Giảm = Đỏ. Nếu inverse=True: Tăng = Đỏ, Giảm = Xanh """
     if prev is None or pd.isna(prev) or (prev == 0 and not is_pct):
         cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
         return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
@@ -236,16 +242,13 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     diff = cur - prev
     pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
 
-    # SET MÀU DỰA THEO LOGIC MỚI CỦA ÔNG
     if diff > 0:
-        # Tăng = Xanh lá
         bg_color, text_color, sign = "#dcfce7", "#15803d", "+"
-        if inverse: # Tăng lỗi = Đỏ
+        if inverse: 
             bg_color, text_color = "#fee2e2", "#b91c1c"
     elif diff < 0:
-        # Giảm = Đỏ
         bg_color, text_color, sign = "#fee2e2", "#b91c1c", ""
-        if inverse: # Giảm lỗi = Xanh lá
+        if inverse: 
             bg_color, text_color = "#dcfce7", "#15803d"
     else:
         bg_color, text_color, sign = "transparent", "#333", ""
@@ -262,7 +265,6 @@ def render_dashboard(df, summary, primary_color):
         st.info("Chưa có dữ liệu cho Hub này.")
         return
 
-    # TÍNH TỔNG (MTD) TỪ CỘT NGÀY NHƯ CŨ
     total_vol = df['Tổng lượng hàng'].sum(skipna=True) 
     total_weight = df['Tổng trọng lượng (Kg)'].sum(skipna=True)
     total_missort = df['Số đơn Missort'].sum(skipna=True)
@@ -271,52 +273,72 @@ def render_dashboard(df, summary, primary_color):
     total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
 
-    # LẤY SỐ LIỆU TUẦN
     cw_vol, pw_vol = summary.get("cw_vol", 0), summary.get("pw_vol", 0)
     cw_wgt, pw_wgt = summary.get("cw_wgt", 0), summary.get("pw_wgt", 0)
     cw_ms, pw_ms   = summary.get("cw_ms", 0), summary.get("pw_ms", 0)
     cw_bl, pw_bl   = summary.get("cw_bl", 0), summary.get("pw_bl", 0)
     cw_ot, pw_ot   = summary.get("cw_ot", 0), summary.get("pw_ot", 0)
 
-    # BẢNG TỔNG HỢP HIỂN THỊ
+    # -------------------------------------------------------------
+    # 1. HEADER METRICS (CÓ TIẾNG TRUNG)
+    # -------------------------------------------------------------
+    c1, c2, c3, c4, c5 = st.columns(5)
+    
+    def get_wow_delta(cur, prev):
+        if prev == 0: return None
+        return f"{((cur - prev) / prev * 100):.1f}% WOW"
+
+    c1.metric("Tổng Sản Lượng | 入境货物总量", format_vietnam(total_vol), delta=get_wow_delta(cw_vol, pw_vol))
+    c2.metric("Tổng Trọng Lượng | 进口货物总重量", format_vietnam(total_weight) + " kg", delta=get_wow_delta(cw_wgt, pw_wgt))
+    c3.metric(f"Tổng Missort | 分拣错误 ({final_missort_rate:.2f}%)", format_vietnam(total_missort), delta=get_wow_delta(cw_ms, pw_ms), delta_color="inverse")
+    c4.metric("Tổng Backlog | 积压货物", format_vietnam(total_backlog), delta=get_wow_delta(cw_bl, pw_bl), delta_color="inverse")
+    
+    diff_ot = cw_ot - pw_ot if pw_ot > 0 else 0
+    c5.metric("Tỷ Lệ Đúng Giờ | 准点率", f"{final_ontime_rate:.2f}%", delta=f"{diff_ot:.1f}% WOW" if pw_ot > 0 else None)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # -------------------------------------------------------------
+    # 2. BẢNG TỔNG HỢP SONG NGỮ
+    # -------------------------------------------------------------
     html_table = f"""
     <table class="kpi-table">
         <thead>
             <tr>
-                <th>Pillar (Nhóm)</th>
-                <th>Metrics (Chỉ tiêu)</th>
-                <th style="width: 100px;">WoW</th>
-                <th>Kỳ Này (Current)</th>
-                <th>Kỳ Trước (Previous)</th>
-                <th>Tổng Tháng (MTD)</th>
+                <th>KPI<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>关键指标</span></th>
+                <th>Hạng mục<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>指标</span></th>
+                <th style="width: 100px;">WOW<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>周环比</span></th>
+                <th>Tuần này<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>本周</span></th>
+                <th>Tuần trước<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>上周</span></th>
+                <th>MTD<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>月度累计</span></th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td rowspan="2" class="col-pillar" style="color: #0ea5e9;">Inbound<br>(Sản Lượng)</td>
-                <td class="col-metric">Tổng Sản Lượng (đơn)</td>
+                <td rowspan="2" class="col-pillar" style="color: #0ea5e9;">Sản Lượng<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>生产</span></td>
+                <td class="col-metric">Tổng Sản Lượng (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>入境货物总量</span></td>
                 {get_wow_cell(cw_vol, pw_vol)}
                 <td class="col-mtd">{format_vietnam(total_vol)}</td>
             </tr>
             <tr>
-                <td class="col-metric">Tổng Trọng Lượng (kg)</td>
+                <td class="col-metric">Tổng Trọng Lượng (kg)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>进口货物总重量</span></td>
                 {get_wow_cell(cw_wgt, pw_wgt)}
                 <td class="col-mtd">{format_vietnam(total_weight)}</td>
             </tr>
             <tr>
-                <td rowspan="2" class="col-pillar" style="color: #ef4444;">Quality<br>(Chất Lượng)</td>
-                <td class="col-metric">Tổng Missort (đơn)</td>
+                <td rowspan="2" class="col-pillar" style="color: #ef4444;">Chất Lượng<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>质量</span></td>
+                <td class="col-metric">Tổng Missort (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>分拣错误</span></td>
                 {get_wow_cell(cw_ms, pw_ms, inverse=True)}
                 <td class="col-mtd">{format_vietnam(total_missort)}</td>
             </tr>
             <tr>
-                <td class="col-metric">Backlog Tồn Đọng (đơn)</td>
+                <td class="col-metric">Backlog Tồn Đọng (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>积压货物</span></td>
                 {get_wow_cell(cw_bl, pw_bl, inverse=True)}
                 <td class="col-mtd">{format_vietnam(total_backlog)}</td>
             </tr>
             <tr>
-                <td class="col-pillar" style="color: #10b981;">Linehaul<br>(Vận Tải)</td>
-                <td class="col-metric">Tỷ Lệ Đúng Giờ (%)</td>
+                <td class="col-pillar" style="color: #10b981;">Vận Tải<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>干线</span></td>
+                <td class="col-metric">Tỷ Lệ Đúng Giờ (%)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>准点率</span></td>
                 {get_wow_cell(cw_ot, pw_ot, is_pct=True)}
                 <td class="col-mtd">{final_ontime_rate:.2f}%</td>
             </tr>
@@ -325,8 +347,10 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
 
-    # KHU VỰC VẼ BIỂU ĐỒ 
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng Inbound & Missort</h4>", unsafe_allow_html=True)
+    # -------------------------------------------------------------
+    # 3. KHU VỰC BIỂU ĐỒ & BẢNG THÔ 
+    # -------------------------------------------------------------
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng Inbound & Missort | 入境与分拣图表</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
     with col_chart1:
@@ -349,7 +373,7 @@ def render_dashboard(df, summary, primary_color):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải (Linehaul) & Hàng Tồn (Backlog)</h4>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải & Hàng Tồn | 干线与积压监控</h4>", unsafe_allow_html=True)
     col_chart3, col_chart4 = st.columns(2)
 
     with col_chart3:
@@ -369,7 +393,7 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô</h4>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô | 原始数据</h4>", unsafe_allow_html=True)
     df_show = df.copy()
     for col in df_show.columns:
         if col != "Ngày":
