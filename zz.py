@@ -185,16 +185,17 @@ def render_dashboard(df, sum_data, color):
         fig.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Tổng'] - df['Shuttle Trễ'], name="Shuttle Đúng Giờ", marker_color='#3b82f6'))
         fig.update_layout(title="Tổng chuyến xe", barmode='stack', height=350, plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig, use_container_width=True)
-    with g5:
-        # Biểu đồ giữa: Trễ Linehaul
-        fig = go.Figure(go.Bar(x=df['Ngày'], y=df['LH Trễ'], marker_color='#ef4444', text=[fmt(x) for x in df['LH Trễ']], textposition='outside'))
-        fig.update_layout(title="Số chuyến xe trễ Linehaul", height=350, plot_bgcolor='white')
-        st.plotly_chart(fig, use_container_width=True)
-    with g6:
+     with g5:
         # Biểu đồ phải: Trễ Shuttle
         fig = go.Figure(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'], marker_color='#f97316', text=[fmt(x) for x in df['Shuttle Trễ']], textposition='outside'))
         fig.update_layout(title="Số chuyến xe trễ Shuttle", height=350, plot_bgcolor='white')
         st.plotly_chart(fig, use_container_width=True)
+    with g6:
+        # Biểu đồ giữa: Trễ Linehaul
+        fig = go.Figure(go.Bar(x=df['Ngày'], y=df['LH Trễ'], marker_color='#ef4444', text=[fmt(x) for x in df['LH Trễ']], textposition='outside'))
+        fig.update_layout(title="Số chuyến xe trễ Linehaul", height=350, plot_bgcolor='white')
+        st.plotly_chart(fig, use_container_width=True)
+   
 
 # MAIN
 st.markdown("<h2 style='text-align:center;color:#1e293b'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
