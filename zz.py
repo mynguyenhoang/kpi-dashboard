@@ -142,7 +142,7 @@ def get_data():
         data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
         
-        # Logistic vận tải - xử lý 0 khi NaN để tránh lỗi tính toán cộng trừ
+        # Logistic vận tải
         lh_c_list = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
         lh_t_list = [clean_val(lht_idx, c) if pd.notna(clean_val(lht_idx, c)) else 0 for c in cols_to_scan]
         sh_c_list = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
@@ -153,6 +153,7 @@ def get_data():
         data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
         data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
 
+        # Logic Tuần (WOW) - lấy từ các cột tổng hợp tuần trên Feishu
         valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
         cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
         pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
@@ -169,7 +170,7 @@ def get_data():
             "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_win": clean_val(win_idx, cw_idx) if cw_idx != -1 else 0, "pw_win": clean_val(win_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_wout": clean_val(wout_idx, cw_idx) if wout_idx != -1 else 0, "pw_wout": clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_wout": clean_val(wout_idx, cw_idx) if cw_idx != -1 else 0, "pw_wout": clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx), "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
@@ -193,7 +194,6 @@ if df_hcm.empty and df_bn.empty:
 
 tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
 
-# HÀM ĐỊNH DẠNG SỐ: Nếu NaN hoặc rỗng thì trả về chuỗi rỗng để ẩn số 0
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
@@ -220,18 +220,26 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
+    
+    # --- LOGIC MTD: TỔNG TOÀN BỘ CÁC NGÀY TRONG THÁNG (FIXED) ---
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
     t_win = df['Inbound Wgt'].sum(skipna=True) 
     t_wout = df['Outbound Wgt'].sum(skipna=True) 
     t_ms = df['Missort'].sum(skipna=True)
-    t_bl = df['Backlog'].sum(skipna=True)
-    lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
-    sh_total = df['Shuttle Đúng Giờ'].fillna(0).sum() + df['Shuttle Trễ'].fillna(0).sum()
-    lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
-    shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
-    ms_rate_mtd = (t_ms / (t_vin+t_vout) * 100) if (t_vin+t_vout) > 0 else 0
-    cw = summary
+    t_bl = df['Backlog'].sum(skipna=True) # Tổng Backlog cộng dồn hoặc giá trị ngày cuối tùy nghiệp vụ, ở đây đang sum
+    
+    # Tính vận tải MTD dựa trên tổng số chuyến đúng/trễ của cả tháng
+    lh_dung = df['LH Đúng Giờ'].sum(skipna=True)
+    lh_tre = df['LH Trễ'].sum(skipna=True)
+    sh_dung = df['Shuttle Đúng Giờ'].sum(skipna=True)
+    sh_tre = df['Shuttle Trễ'].sum(skipna=True)
+    
+    lhot_mtd = (lh_dung / (lh_dung + lh_tre) * 100) if (lh_dung + lh_tre) > 0 else 0
+    shot_mtd = (sh_dung / (sh_dung + sh_tre) * 100) if (sh_dung + sh_tre) > 0 else 0
+    ms_rate_mtd = (t_ms / (t_vin + t_vout) * 100) if (t_vin + t_vout) > 0 else 0
+    
+    cw = summary # Dữ liệu WoW lấy từ 2 tuần gần nhất
 
     # 1. HEADER METRICS (MTD)
     c1, c2, c3, c4 = st.columns(4)
@@ -251,7 +259,7 @@ def render_dashboard(df, summary, primary_color):
                 <th style="width: 100px;">WOW<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>周环比</span></th>
                 <th>Tuần này<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>本周</span></th>
                 <th>Tuần trước<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>上周</span></th>
-                <th>MTD<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>月度累计</span></th>
+                <th>MTD (Cả Tháng)<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>月度累计</span></th>
             </tr>
         </thead>
         <tbody>
@@ -288,7 +296,7 @@ def render_dashboard(df, summary, primary_color):
                 <td class="col-mtd">{format_vietnam(t_bl)}</td>
             </tr>
             <tr>
-                <td rowspan="2" class="col-pillar" style="color: #10b981;">Vận Tải<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>干线/班车</span></td>
+                <td rowspan="2" class="col-pillar" style="color: #10b981;">Vận Tải<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>干线/班車</span></td>
                 <td class="col-metric">Linehaul Đúng Giờ (%)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>干线准点率</span></td>
                 {get_wow_cell(cw['cw_lhot'], cw['pw_lhot'], is_pct=True)}
                 <td class="col-mtd">{lhot_mtd:.2f}%</td>
@@ -303,7 +311,7 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
 
-    # 3. BIỂU ĐỒ
+    # 3. BIỂU ĐỒ (Giữ nguyên)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Missort | 生产与分拣图表</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
     with col_chart1:
@@ -319,36 +327,15 @@ def render_dashboard(df, summary, primary_color):
         fig_ms.update_layout(title_text="Phân tích Missort (Số lượng & Tỷ lệ)", plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_ms, use_container_width=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải & Hàng Tồn | 运输与积压监控</h4>", unsafe_allow_html=True)
-    col_chart3, col_chart4 = st.columns(2)
-    with col_chart3:
-        fig_xe = go.Figure()
-        # fillna(0) chỉ dùng cho biểu đồ để không bị đứt đoạn
-        fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'].fillna(0)+df['Shuttle Đúng Giờ'].fillna(0), name="Đúng giờ COT", marker_color='#10b981'))
-        fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'].fillna(0)+df['Shuttle Trễ'].fillna(0), name="Trễ giờ COT", marker_color='#f43f5e'))
-        fig_xe.update_layout(title="Kiểm soát Chuyến xe chạy COT (LH + Shuttle)", barmode='stack', plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        st.plotly_chart(fig_xe, use_container_width=True)
-    with col_chart4:
-        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng cuối ngày")
-        fig_bl.update_traces(marker_color='#f59e0b', text=[format_vietnam(v) if pd.notna(v) and v > 0 else "" for v in df['Backlog']], textposition="outside")
-        fig_bl.update_layout(plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10))
-        st.plotly_chart(fig_bl, use_container_width=True)
-
-    # 5. BẢNG DỮ LIỆU THÔ (FIX ẨN SỐ 0)
+    # 5. BẢNG DỮ LIỆU THÔ (Ẩn số 0 rỗng)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô | 原始数据</h4>", unsafe_allow_html=True)
     df_show = df.copy()
     rename_map = {
-        "Inbound Vol": "Inbound (đơn) | 入境货物",
-        "Outbound Vol": "Outbound (đơn) | 出境货物",
-        "Inbound Wgt": "Inbound (kg) | 进口重量",
-        "Outbound Wgt": "Outbound (kg) | 出口重量",
-        "Missort": "Số đơn Missort | 分拣错误",
-        "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%) | 错误率",
-        "Backlog": "Backlog (đơn) | 积压货物",
-        "LH Đúng Giờ": "LH Đúng Giờ | 干线准时",
-        "LH Trễ": "LH Trễ | 干线延误",
-        "Shuttle Đúng Giờ": "Shuttle Đúng Giờ | 班车准时",
+        "Inbound Vol": "Inbound (đơn) | 入境货物", "Outbound Vol": "Outbound (đơn) | 出境货物",
+        "Inbound Wgt": "Inbound (kg) | 进口重量", "Outbound Wgt": "Outbound (kg) | 出口重量",
+        "Missort": "Số đơn Missort | 分拣错误", "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%) | 错误率",
+        "Backlog": "Backlog (đơn) | 积压货物", "LH Đúng Giờ": "LH Đúng Giờ | 干线准时",
+        "LH Trễ": "LH Trễ | 干线延误", "Shuttle Đúng Giờ": "Shuttle Đúng Giờ | 班车准时",
         "Shuttle Trễ": "Shuttle Trễ | 班车延误"
     }
     df_show = df_show.rename(columns=rename_map)
@@ -357,11 +344,10 @@ def render_dashboard(df, summary, primary_color):
             if "Tỷ lệ" in col:
                 df_show[col] = df_show[col].apply(lambda x: f"{x:.2f}%" if (pd.notna(x) and x != "") else "")
             else:
-                # Áp dụng format_vietnam: Tự động chuyển NaN/0 rỗng thành ""
                 df_show[col] = df_show[col].apply(format_vietnam)
     
     df_show = df_show.set_index("Ngày").T
-    with st.expander("🔍 Bấm vào đây để xem Bảng Chi Tiết Thô Hàng Ngày | 每日原始数据", expanded=True):
+    with st.expander("🔍 Bấm vào đây để xem Bảng Chi Tiết Thô Hàng Ngày", expanded=True):
         st.dataframe(df_show, use_container_width=True)
 
 with tab1:
