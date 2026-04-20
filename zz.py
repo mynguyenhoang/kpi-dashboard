@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
-import time # Thêm thư viện time để fix lỗi Feishu load chậm
+import time
 
 # 1. CẤU HÌNH TRANG
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
@@ -13,11 +13,18 @@ st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initia
 st.markdown("""
 <style>
     div[data-testid="metric-container"] {
-        background-color: #f8fafc;
+        background-color: #ffffff;
         border: 1px solid #e2e8f0;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    div[data-testid="metric-container"] > div > div > div > div:first-child {
+        color: #64748b;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -39,13 +46,12 @@ def get_tenant_access_token():
 def get_data():
     token = get_tenant_access_token()
     if not token:
-        st.error("❌ Không lấy được Token Feishu.")
+        st.error("Không lấy được Token Feishu.")
         return pd.DataFrame(), pd.DataFrame()
 
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     
-    # --- ĐÃ THÊM LOGIC FIX LỖI FEISHU "DATA NOT READY" ---
     max_retries = 3
     res_data = None
     
@@ -57,16 +63,16 @@ def get_data():
                 break
             elif "not ready" in str(res.get("msg")).lower():
                 if attempt < max_retries - 1:
-                    time.sleep(2) # Đợi 2s cho Feishu tính toán xong rồi thử lại
+                    time.sleep(2)
                     continue
                 else:
-                    st.error(f"❌ Lỗi Feishu: {res.get('msg')} (File tính toán quá lâu)")
+                    st.error(f"Lỗi Feishu: {res.get('msg')} (File tính toán quá lâu)")
                     return pd.DataFrame(), pd.DataFrame()
             else:
-                st.error(f"❌ Lỗi Feishu: {res.get('msg')}")
+                st.error(f"Lỗi Feishu: {res.get('msg')}")
                 return pd.DataFrame(), pd.DataFrame()
         except Exception as e:
-            st.error(f"❌ Lỗi hệ thống: {str(e)}")
+            st.error(f"Lỗi kết nối: {str(e)}")
             return pd.DataFrame(), pd.DataFrame()
 
     if not res_data:
@@ -76,7 +82,6 @@ def get_data():
     if not vals or len(vals) < 55:
         return pd.DataFrame(), pd.DataFrame()
 
-    # BỘ LỌC DỮ LIỆU "DIỆT" LỖI SAI SỐ
     def clean_val(row_idx, col_idx):
         try:
             if row_idx < len(vals) and col_idx < len(vals[row_idx]):
@@ -91,7 +96,6 @@ def get_data():
         except:
             return np.nan
 
-    # TÌM CỘT NGÀY THÁNG (Index 3)
     date_row_idx = 3 
     start_col_idx = -1
     for c in range(2, len(vals[date_row_idx])):
@@ -147,14 +151,14 @@ def get_data():
     return df_hcm, df_bn
 
 # 3. GIAO DIỆN HIỂN THỊ CHUNG
-st.markdown("<h1 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>📊 J&T CARGO KPI DASHBOARD</h1>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; font-weight: 700; color: #1e293b; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
 df_hcm, df_bn = get_data()
 
 if df_hcm.empty and df_bn.empty:
-    st.warning("⚠️ Không tìm thấy dữ liệu. Vui lòng kiểm tra lại file Feishu.")
+    st.warning("Không tìm thấy dữ liệu. Vui lòng kiểm tra lại file Feishu.")
     st.stop()
 
-tab1, tab2 = st.tabs(["🏢 HỒ CHÍ MINH HUB", "🏢 BẮC NINH HUB"])
+tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
 
 def format_vietnam(number):
     if pd.isna(number): return "0"
@@ -165,7 +169,7 @@ def render_dashboard(df, primary_color):
         st.info("Chưa có dữ liệu cho Hub này.")
         return
 
-    # TÍNH TỔNG MTD (Giữ nguyên logic cũ của bạn)
+    # TÍNH TỔNG MTD
     total_vol = df['Tổng lượng hàng'].sum(skipna=True) 
     total_weight = df['Tổng trọng lượng (Kg)'].sum(skipna=True)
     total_missort = df['Số đơn Missort'].sum(skipna=True)
@@ -176,13 +180,15 @@ def render_dashboard(df, primary_color):
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
     final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
-    # --- ĐÃ THÊM LOGIC TÍNH WOW (Tuần này vs Tuần trước) ---
+    # TÍNH WOW (LINH HOẠT THEO SỐ NGÀY HIỆN CÓ)
     valid_df = df.dropna(subset=['Tổng lượng hàng'])
-    delta_vol = delta_wgt = delta_ms = delta_bl = delta_ot = None # Ẩn mũi tên nếu ko đủ data
+    delta_vol = delta_wgt = delta_ms = delta_bl = delta_ot = None 
     
-    if len(valid_df) >= 14: # Đảm bảo có ít nhất 14 ngày để so sánh
-        cw = valid_df.iloc[-7:]    # 7 ngày gần nhất
-        pw = valid_df.iloc[-14:-7] # 7 ngày trước đó
+    n_days = len(valid_df)
+    if n_days >= 4:
+        period = min(7, n_days // 2) 
+        cw = valid_df.iloc[-period:]
+        pw = valid_df.iloc[-(2*period):-period]
         
         def calc_wow(cur, prev):
             return ((cur - prev) / prev * 100) if prev > 0 else 0.0
@@ -197,21 +203,33 @@ def render_dashboard(df, primary_color):
         pw_xe_chay = pw['Xe Đúng COT (Tổng)'].sum() + pw['Xe Sai COT (Tổng)'].sum()
         pw_ot = (pw['Xe Đúng COT (Tổng)'].sum() / pw_xe_chay * 100) if pw_xe_chay > 0 else 0
         delta_ot = f"{(cw_ot - pw_ot):.1f}% WoW"
-    # --------------------------------------------------------
 
-    # HEADER HIỂN THỊ
+    # AUTO ALERTS
+    recent_3_days = valid_df.iloc[-3:]
+    alerts = []
+    for index, row in recent_3_days.iterrows():
+        if pd.notna(row['Backlog tồn đọng']) and row['Backlog tồn đọng'] > 100:
+            alerts.append(f"Ngày {row['Ngày']}: Tồn đọng (Backlog) cao bất thường ({format_vietnam(row['Backlog tồn đọng'])} đơn).")
+        if pd.notna(row['Số đơn Missort']) and row['Số đơn Missort'] > 50:
+            alerts.append(f"Ngày {row['Ngày']}: Missort tăng đột biến ({format_vietnam(row['Số đơn Missort'])} đơn).")
+    
+    if alerts:
+        with st.expander("HỆ THỐNG CẢNH BÁO VẬN HÀNH NGẮN HẠN", expanded=True):
+            for alert in alerts:
+                st.error(alert)
+
+    # HEADER METRICS
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("📦 Tổng Sản Lượng", format_vietnam(total_vol), delta=delta_vol)
-    c2.metric("⚖️ Tổng Trọng Lượng", format_vietnam(total_weight) + " kg", delta=delta_wgt)
-    # Lỗi và Tồn đọng dùng 'inverse' (Giảm thì hiện màu xanh, tăng hiện màu đỏ)
-    c3.metric(f"❌ Tổng Missort ({final_missort_rate:.2f}%)", format_vietnam(total_missort), delta=delta_ms, delta_color="inverse")
-    c4.metric("📦 Tổng Backlog", format_vietnam(total_backlog), delta=delta_bl, delta_color="inverse")
-    c5.metric("🚚 Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%", delta=delta_ot)
+    c1.metric("Tổng Sản Lượng", format_vietnam(total_vol), delta=delta_vol)
+    c2.metric("Tổng Trọng Lượng", format_vietnam(total_weight) + " kg", delta=delta_wgt)
+    c3.metric(f"Tổng Missort ({final_missort_rate:.2f}%)", format_vietnam(total_missort), delta=delta_ms, delta_color="inverse")
+    c4.metric("Tổng Backlog", format_vietnam(total_backlog), delta=delta_bl, delta_color="inverse")
+    c5.metric("Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%", delta=delta_ot)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- KHU VỰC VẼ BIỂU ĐỒ (Giữ nguyên gốc của bạn) ---
-    st.markdown(f"<h4 style='color: {primary_color};'>1. Đánh giá Sản Lượng & Chất Lượng Phân Loại (Missort)</h4>", unsafe_allow_html=True)
+    # CHARTS
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Đánh giá Sản Lượng & Chất Lượng Phân Loại (Missort)</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
     with col_chart1:
@@ -225,7 +243,7 @@ def render_dashboard(df, primary_color):
 
     with col_chart2:
         fig_ms = make_subplots(specs=[[{"secondary_y": True}]])
-        fig_ms.add_trace(go.Bar(x=df['Ngày'], y=df['Số đơn Missort'], name="Số đơn Missort", marker_color='#94a3b8', opacity=0.7), secondary_y=False)
+        fig_ms.add_trace(go.Bar(x=df['Ngày'], y=df['Số đơn Missort'], name="Số đơn Missort", marker_color='#cbd5e1', opacity=0.8), secondary_y=False)
         fig_ms.add_trace(go.Scatter(x=df['Ngày'], y=df['Tỷ lệ Missort (%)'], name="Tỷ lệ %", mode='lines+markers', line=dict(color='#ef4444', width=3)), secondary_y=True)
         fig_ms.update_layout(title_text="Phân tích Missort (Số lượng & Tỷ lệ)", plot_bgcolor='white', hovermode='x unified', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         fig_ms.update_xaxes(showgrid=False)
@@ -234,7 +252,7 @@ def render_dashboard(df, primary_color):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải (Linehaul) & Hàng Tồn (Backlog)</h4>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải (Linehaul) & Hàng Tồn (Backlog)</h4>", unsafe_allow_html=True)
     col_chart3, col_chart4 = st.columns(2)
 
     with col_chart3:
@@ -254,7 +272,7 @@ def render_dashboard(df, primary_color):
         fig_bl.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    with st.expander("🔍 Bảng đối soát dữ liệu thô (Bấm để xem)"):
+    with st.expander("Bảng đối soát dữ liệu thô (Bấm để xem)"):
         df_show = df.copy()
         for col in df_show.columns:
             if col != "Ngày":
@@ -263,6 +281,6 @@ def render_dashboard(df, primary_color):
         st.dataframe(df_show, use_container_width=True)
 
 with tab1:
-    render_dashboard(df_hcm, primary_color="#0ea5e9") 
+    render_dashboard(df_hcm, primary_color="#0284c7") 
 with tab2:
     render_dashboard(df_bn, primary_color="#059669")
