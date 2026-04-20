@@ -165,12 +165,16 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
-    t_vin = df['Inbound Vol'].sum(skipna=True) 
-    t_vout = df['Outbound Vol'].sum(skipna=True) 
-    t_ms = df['Missort'].sum(skipna=True)
-    t_bl = df['Backlog'].sum(skipna=True)
-    ms_rate_mtd = (t_ms / (t_vin+t_vout) * 100) if (t_vin+t_vout) > 0 else 0
-    cw = summary
+    
+    # CHỈNH SỬA TẠI ĐÂY: Đảm bảo dữ liệu là số trước khi sum
+    # pd.to_numeric với errors='coerce' sẽ biến các ô lỗi (chữ, công thức lỗi) thành NaN để sum(skipna=True) hoạt động chuẩn
+    t_vin = pd.to_numeric(df['Inbound Vol'], errors='coerce').sum(skipna=True)
+    t_vout = pd.to_numeric(df['Outbound Vol'], errors='coerce').sum(skipna=True)
+    t_ms = pd.to_numeric(df['Missort'], errors='coerce').sum(skipna=True)
+    t_bl = pd.to_numeric(df['Backlog'], errors='coerce').sum(skipna=True)
+
+    # Tính tỷ lệ Missort MTD chuẩn (Tổng lỗi / Tổng hàng nhập + xuất)
+    ms_rate_mtd = (t_ms / (t_vin + t_vout) * 100) if (t_vin + t_vout) > 0 else 0
 
     # 1. HEADER METRICS (MTD)
     c1, c2, c3, c4 = st.columns(4)
