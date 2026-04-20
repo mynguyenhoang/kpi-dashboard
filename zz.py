@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH (SIZE CHỮ TO, MÀU SÁNG)
+# 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
@@ -189,11 +189,17 @@ def clean_layout(fig, title):
     fig.update_layout(
         title=dict(text=title, font=dict(size=26, weight='bold', color='#1e3a8a')),
         plot_bgcolor='white', paper_bgcolor='white', margin=dict(t=70, b=30, l=10, r=10),
-        xaxis=dict(showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')),
+        xaxis=dict(
+            showgrid=False, 
+            tickfont=dict(size=14, color='#1e293b', weight='bold'),
+            tickmode='linear', # ÉP PLOTLY HIỂN THỊ TẤT CẢ CÁC NGÀY, KHÔNG ĐƯỢC ẨN
+            tickangle=-45 # Nghiêng 45 độ cho dễ đọc và không bị đụng nhau
+        ),
         yaxis=dict(showgrid=True, gridcolor='#e2e8f0', tickfont=dict(size=16, color='#1e293b', weight='bold'), zeroline=False),
         hoverlabel=dict(font_size=18)
     )
-    fig.update_traces(cliponaxis=False, textfont_size=16)
+    # Gỡ bỏ textfont_size=16 ở đây để uniformtext hoạt động tốt trên từng trace
+    fig.update_traces(cliponaxis=False)
     return fig
 
 def render_dashboard(df, summary, primary_color):
@@ -248,31 +254,56 @@ def render_dashboard(df, summary, primary_color):
                                      textposition="top center", textfont=dict(size=16, color='#0284c7', family="Arial Black"), line=dict(color='#0284c7', width=4)))
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound | 出库", line=dict(color='#f59e0b', dash='dot', width=4)))
         fig_vol = clean_layout(fig_vol, "Inbound & Outbound hàng ngày | 每日入库/出库")
-        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=16)), height=500)
+        fig_vol.update_layout(legend=dict(orientation="h", y=1.1, font=dict(size=16)), height=500, uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_vol, use_container_width=True)
         
     with col2:
         fig_prod_v = go.Figure()
-        fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], name="Năng suất", marker_color='#38bdf8', opacity=0.9,
-                                    text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Vol']], textposition='outside', textfont=dict(size=16, color='#0369a1')))
+        
+        # ĐÃ FIX: Chữ xoay dọc 90 độ, nằm bên trong cột để luôn to đùng và không bị đè
+        fig_prod_v.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Total Process Vol'], 
+            name="Năng suất", 
+            marker_color='#38bdf8', 
+            opacity=0.9,
+            text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Vol']], 
+            textposition='inside', 
+            textangle=-90, 
+            insidetextanchor='end', 
+            textfont=dict(size=16, color='#0f172a') # Màu chữ xanh đen đậm cho nổi bật
+        ))
+        
         fig_prod_v.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Vol'], name="Xu hướng", line=dict(color='#dc2626', width=4, shape='spline')))
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất | 产能 (Số đơn | 单数)")
-        fig_prod_v.update_layout(height=500, showlegend=False)
+        fig_prod_v.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) # Ép size chữ
         st.plotly_chart(fig_prod_v, use_container_width=True)
         
     with col3:
         fig_prod_w = go.Figure()
-        fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], name="Trọng lượng", marker_color='#818cf8', opacity=0.9,
-                                    text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Wgt']], textposition='outside', textfont=dict(size=16, color='#4338ca')))
+        
+        # ĐÃ FIX: Chữ xoay dọc 90 độ, nằm bên trong cột
+        fig_prod_w.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Total Process Wgt'], 
+            name="Trọng lượng", 
+            marker_color='#818cf8', 
+            opacity=0.9,
+            text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Wgt']], 
+            textposition='inside', 
+            textangle=-90, 
+            insidetextanchor='end', 
+            textfont=dict(size=16, color='#ffffff') # Màu chữ trắng cho nổi trên nền tím xanh
+        ))
+        
         fig_prod_w.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Wgt'], name="Xu hướng", line=dict(color='#dc2626', width=4, shape='spline')))
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất | 产能 (Trọng lượng | 重量 kg)")
-        fig_prod_w.update_layout(height=500, showlegend=False)
+        fig_prod_w.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) # Ép size chữ
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
     # 4. BIỂU ĐỒ VẬN TẢI & COT (%)
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 40px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & COT | 运输与准时出库管理</h3>", unsafe_allow_html=True)
     
-    # SỬA Ở ĐÂY: Chia tỉ lệ cột 50/50 (bằng nhau)
     col_t1, col_t2 = st.columns(2) 
     
     with col_t1:
@@ -280,13 +311,11 @@ def render_dashboard(df, summary, primary_color):
         fig_trans.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', text=[int(x) if x>0 else "" for x in df['Shuttle Chuyến']], textposition='inside', textfont=dict(size=16, color='white', weight='bold')))
         fig_trans.add_trace(go.Bar(x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', text=[int(x) if x>0 else "" for x in df['Linehaul Chuyến']], textposition='inside', textfont=dict(size=16, color='white', weight='bold')))
         fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul) | 总车次")
-        fig_trans.update_layout(barmode='stack', height=500, legend=dict(orientation="h", y=-0.2, font=dict(size=16)))
+        fig_trans.update_layout(barmode='stack', height=500, legend=dict(orientation="h", y=-0.2, font=dict(size=16)), uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_trans, use_container_width=True)
 
     with col_t2:
         fig_cot = go.Figure()
-        
-        # Biểu đồ Cột (Ép không cho thu nhỏ chữ, xoay dọc)
         fig_cot.add_trace(go.Bar(
             x=df['Ngày'], 
             y=df['COT Total'], 
@@ -295,13 +324,12 @@ def render_dashboard(df, summary, primary_color):
             opacity=0.8,
             text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']],
             textposition='inside',
-            textangle=-90, # Ép xoay dọc 90 độ
-            insidetextanchor='end', # Neo chữ lùi lên phía trên cùng của cột cho dễ nhìn
-            textfont=dict(size=16, color='#0f172a'), # Chữ màu xanh đen đậm
+            textangle=-90, 
+            insidetextanchor='end',
+            textfont=dict(size=16, color='#0f172a'),
             insidetextfont=dict(size=16, color='#0f172a')
         ))
         
-        # Biểu đồ Đường
         fig_cot.add_trace(go.Scatter(
             x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", 
             line=dict(color='#059669', width=5, shape='spline'), mode='lines+markers+text',
@@ -311,13 +339,11 @@ def render_dashboard(df, summary, primary_color):
         ))
         
         fig_cot = clean_layout(fig_cot, "% Sent Volume Ontime | 准时出库率 %")
-        
-        # THÊM uniformtext ĐỂ CHỐNG AUTO-SHRINK CỦA PLOTLY
         fig_cot.update_layout(
             height=500, 
             showlegend=False, 
             yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')),
-            uniformtext=dict(minsize=15, mode='show') # Chìa khóa ở đây: Ép Plotly luôn hiện chữ size 15 trở lên
+            uniformtext=dict(minsize=14, mode='show') 
         )
         st.plotly_chart(fig_cot, use_container_width=True)
 
@@ -327,19 +353,19 @@ def render_dashboard(df, summary, primary_color):
         fig_sh_late = go.Figure()
         fig_sh_late.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Late'], marker_color='#ef4444', text=[int(x) if x>0 else "" for x in df['Shuttle Late']], textposition='outside', textfont=dict(size=16, color='#991b1b', weight='bold')))
         fig_sh_late = clean_layout(fig_sh_late, "Shuttle Late | 支线延迟")
-        fig_sh_late.update_layout(height=400)
+        fig_sh_late.update_layout(height=400, uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_sh_late, use_container_width=True)
     with col_l2:
         fig_lh_late = go.Figure()
         fig_lh_late.add_trace(go.Bar(x=df['Ngày'], y=df['Linehaul Late'], marker_color='#f43f5e', text=[int(x) if x>0 else "" for x in df['Linehaul Late']], textposition='outside', textfont=dict(size=16, color='#9f1239', weight='bold')))
         fig_lh_late = clean_layout(fig_lh_late, "Linehaul Late | 干线延迟")
-        fig_lh_late.update_layout(height=400)
+        fig_lh_late.update_layout(height=400, uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_lh_late, use_container_width=True)
     with col_l3:
         fig_bl = go.Figure()
         fig_bl.add_trace(go.Bar(x=df['Ngày'], y=df['Backlog'], marker_color='#f59e0b', text=[format_vietnam(x) if x>0 else "" for x in df['Backlog']], textposition='outside', textfont=dict(size=16, color='#b45309', weight='bold')))
         fig_bl = clean_layout(fig_bl, "Backlog | 积压")
-        fig_bl.update_layout(height=400)
+        fig_bl.update_layout(height=400, uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_bl, use_container_width=True)
 
     # 5. CHI TIẾT DỮ LIỆU THÔ
