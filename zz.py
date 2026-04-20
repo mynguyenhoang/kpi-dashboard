@@ -328,7 +328,7 @@ with col4:
         marker_color='#10b981',
         text=df['Tổng LH'],
         textposition='inside'
-    ))
+        ))
         fig_total.add_trace(go.Bar(
         x=df['Ngày'], 
         y=df['Tổng Shuttle'], 
@@ -336,13 +336,13 @@ with col4:
         marker_color='#3b82f6',
         text=df['Tổng Shuttle'],
         textposition='inside'
-    ))
+        ))
         fig_total.update_layout(
         title="Tổng số chuyến xe",
         barmode='stack',
         plot_bgcolor='white',
         legend=dict(orientation="h", y=-0.2)
-    )
+        )
     st.plotly_chart(fig_total, use_container_width=True)
 
 # ===== 2. TRỄ LINEHAUL =====
