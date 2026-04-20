@@ -109,18 +109,10 @@ def get_data():
         except:
             return np.nan
 
-    # TÌM CỘT SỐ LIỆU TUẦN (W15, W16...) -> Thường ở dòng 3 (index 2)
-    weekly_col_idxs = [3, 4, 5, 6] # Mặc định là cột D, E, F, G theo ảnh của ông
-    if len(vals) > 2:
-        found_cols = []
-        for c in range(2, min(15, len(vals[2]))):
-            val = str(vals[2][c]).strip().upper()
-            if "W" in val and "202" in val: # Nhận diện cột "W16-2026"
-                found_cols.append(c)
-        if found_cols:
-            weekly_col_idxs = found_cols
+    # ÉP CỨNG CÁC CỘT CHỨA SỐ LIỆU TUẦN (Cột D, E, F, G -> tương ứng index 3, 4, 5, 6)
+    weekly_col_idxs = [3, 4, 5, 6] 
 
-    # TÌM CỘT NGÀY THÁNG (Index 3)
+    # TÌM CỘT NGÀY THÁNG BẮT ĐẦU
     date_row_idx = 3 
     start_col_idx = -1
     for c in range(2, len(vals[date_row_idx])):
@@ -143,7 +135,7 @@ def get_data():
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
     def extract_hub_data(vol_idx, wgt_idx, ms_idx, ms_rt_idx, fte_idx, bl_idx, chuyen_idxs, tre_idxs, lh_rt_idx):
-        # 1. LẤY DỮ LIỆU NGÀY
+        # 1. LẤY DỮ LIỆU NGÀY VẼ BIỂU ĐỒ
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Tổng lượng hàng"] = [clean_val(vol_idx, c) for c in cols_to_scan]
         data["Tổng trọng lượng (Kg)"] = [clean_val(wgt_idx, c) for c in cols_to_scan]
@@ -171,9 +163,9 @@ def get_data():
         data["Xe Sai COT (Tổng)"] = xe_sai_list
         data["Xe Đúng COT (Tổng)"] = xe_dung_list
 
-        # 2. LẤY TRỰC TIẾP DỮ LIỆU TUẦN TỪ CỘT W (Không tự cộng dồn ngày nữa)
-        # Tìm cột W hiện tại (Cột cuối cùng có số lượng hàng)
+        # 2. LẤY TRỰC TIẾP DỮ LIỆU TUẦN TỪ CÁC CỘT W (Không cộng dồn ngày nữa)
         cw_idx = -1
+        # Tìm cột W hiện tại (Cột W cuối cùng có dữ liệu lớn hơn 0)
         for idx in reversed(weekly_col_idxs):
             val = clean_val(vol_idx, idx)
             if pd.notna(val) and val > 0:
@@ -197,7 +189,6 @@ def get_data():
             "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
         }
 
-        # Tính tỷ lệ Linehaul cho các cột tuần đó
         def get_ot_rate(col_idx):
             if col_idx == -1: return 0
             chuyen = sum([clean_val(r, col_idx) for r in chuyen_idxs if pd.notna(clean_val(r, col_idx))])
@@ -207,13 +198,22 @@ def get_data():
         weekly_summary["cw_ot"] = get_ot_rate(cw_idx)
         weekly_summary["pw_ot"] = get_ot_rate(pw_idx)
 
-        # Trả về cả Data ngày (để vẽ biểu đồ) và Data tuần (để làm bảng)
         return pd.DataFrame(data), weekly_summary
 
-    hcm_data = extract_hub_data(8, 9, 17, 18, 23, 31, [38, 39], [40, 41], 43)
-    bn_data = extract_hub_data(14, 15, 19, 20, 26, 32, [47, 48], [49, 50], 52)
+    # SỬA LẠI INDEX Ở ĐÂY ĐỂ TRỎ VÀO DÒNG "INBOUND" ĐÚNG Ý ÔNG:
+    # 1. HCM HUB (Lấy Inbound: Dòng 5 -> index 4, Trọng lượng: Dòng 7 -> index 6)
+    data_hcm = extract_hub_data(
+        vol_idx=4, wgt_idx=6, ms_idx=17, ms_rt_idx=18, fte_idx=23, bl_idx=31, 
+        chuyen_idxs=[38, 39], tre_idxs=[40, 41], lh_rt_idx=43
+    )
+
+    # 2. BN HUB (Lấy Inbound: Dòng 11 -> index 10, Trọng lượng: Dòng 13 -> index 12)
+    data_bn = extract_hub_data(
+        vol_idx=10, wgt_idx=12, ms_idx=19, ms_rt_idx=20, fte_idx=26, bl_idx=32, 
+        chuyen_idxs=[47, 48], tre_idxs=[49, 50], lh_rt_idx=52
+    )
     
-    return hcm_data, bn_data
+    return data_hcm, data_bn
 
 # 3. GIAO DIỆN HIỂN THỊ CHUNG
 st.markdown("<h2 style='text-align: center; font-weight: 700; color: #1e293b; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
@@ -233,7 +233,7 @@ def format_vietnam(number):
     return f"{number:,.0f}".replace(",", ".")
 
 def get_wow_cell(cur, prev, is_pct=False):
-    """Hàm tính % và tạo HTML cho cột WoW"""
+    """Hàm tính % và tạo HTML cho cột WoW (Màu đỏ = Tăng, Xanh = Giảm)"""
     if prev is None or pd.isna(prev) or (prev == 0 and not is_pct):
         cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
         return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
@@ -245,7 +245,6 @@ def get_wow_cell(cur, prev, is_pct=False):
         diff = cur - prev
         pct = (diff / prev) * 100 if prev > 0 else 0
 
-    # Red = Tăng, Green = Giảm
     if diff > 0:
         bg_color, text_color, sign = "#fecaca", "#dc2626", "+"
     elif diff < 0:
@@ -275,7 +274,7 @@ def render_dashboard(df, summary, primary_color):
     total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
 
-    # LẤY SỐ LIỆU TUẦN ĐÃ LỌC TỪ CỘT W CỦA FEISHU
+    # LẤY SỐ LIỆU TUẦN ĐÃ LỌC TỪ FEISHU
     cw_vol, pw_vol = summary.get("cw_vol", 0), summary.get("pw_vol", 0)
     cw_wgt, pw_wgt = summary.get("cw_wgt", 0), summary.get("pw_wgt", 0)
     cw_ms, pw_ms   = summary.get("cw_ms", 0), summary.get("pw_ms", 0)
@@ -329,12 +328,12 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
 
-    # KHU VỰC VẼ BIỂU ĐỒ NGÀY (Giữ nguyên)
+    # KHU VỰC VẼ BIỂU ĐỒ (Sẽ hiển thị chart Inbound thay vì Xử lý như trước)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Chất Lượng Phân Loại</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
     with col_chart1:
-        fig_vol = px.area(df, x="Ngày", y="Tổng lượng hàng", title="Biểu đồ Sản lượng hàng ngày")
+        fig_vol = px.area(df, x="Ngày", y="Tổng lượng hàng", title="Biểu đồ Sản lượng Inbound hàng ngày")
         fig_vol.update_traces(line_color=primary_color, fillcolor='rgba(56, 189, 248, 0.2)', mode='lines+markers+text', 
                               text=[format_vietnam(v) if pd.notna(v) else "" for v in df['Tổng lượng hàng']], textposition="top center")
         fig_vol.update_layout(plot_bgcolor='white', hovermode='x unified', margin=dict(t=40, l=10, r=10, b=10))
