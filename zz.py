@@ -290,7 +290,7 @@ def render_dashboard(df, summary, primary_color):
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.8,
                                     text=[format_vietnam(v) for v in df['Total Process Wgt']], 
                                     textposition='outside',
-                                    textfont=dict(size=14, color='#1e293b', family="Arial Black")))
+                                    textfont=dict(size=20, color='#1e293b', family="Arial Black")))
         fig_prod_w.add_hline(y=df['Total Process Wgt'].mean(), line_dash="dash", line_color="red")
         fig_prod_w.update_layout(title="Năng suất (Trọng lượng kg)", plot_bgcolor='white', yaxis=dict(range=[0, df['Total Process Wgt'].max()*1.2]))
         st.plotly_chart(fig_prod_w, use_container_width=True)
