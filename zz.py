@@ -6,12 +6,12 @@ import plotly.graph_objects as go
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG & CSS
+# 1. CẤU HÌNH TRANG & CSS (Giữ nguyên style chuẩn của bạn)
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
-    .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .kpi-table th { background-color: #1f2937; color: white; padding: 10px 12px; text-align: center; border: 1px solid #d1d5db; font-size: 14px; font-weight: bold; line-height: 1.4; }
-    .kpi-table td { padding: 10px 12px; border: 1px solid #d1d5db; font-size: 14px; vertical-align: middle; line-height: 1.4; }
+    .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .kpi-table th { background-color: #1f2937; color: white; padding: 10px 12px; text-align: center; border: 1px solid #d1d5db; font-size: 14px; font-weight: bold; }
+    .kpi-table td { padding: 10px 12px; border: 1px solid #d1d5db; font-size: 14px; vertical-align: middle; }
     .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
     .col-metric { font-weight: 600; color: #1e293b; }
     .col-num { text-align: right; font-family: monospace; font-size: 15px; }
@@ -19,7 +19,7 @@ st.markdown("""<style>
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (Logic logic logic)
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -80,22 +80,20 @@ def get_data():
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
         data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
-        data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
-        data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
         data["Total Process Vol"] = [clean_val(tproc_vol_idx, c) for c in cols_to_scan]
         data["Total Process Wgt"] = [clean_val(tproc_wgt_idx, c) for c in cols_to_scan]
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
         
-        # Lấy TỔNG CHUYẾN XE (Gốc từ Feishu)
-        data["Linehaul_Total"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
-        data["LH Trễ"] = [clean_val(lht_idx, c) for c in cols_to_scan]
+        # Dữ liệu chính cho biểu đồ Vận Tải
+        data["LH_Total"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
+        data["LH_Tre"] = [clean_val(lht_idx, c) for c in cols_to_scan]
         data["Shuttle_Total"] = [clean_val(shc_idx, c) for c in cols_to_scan]
-        data["Shuttle Trễ"] = [clean_val(sht_idx, c) for c in cols_to_scan]
+        data["Shuttle_Tre"] = [clean_val(sht_idx, c) for c in cols_to_scan]
         
-        # Tính Đúng Giờ phục vụ bảng KPI
-        data["LH Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["Linehaul_Total"], data["LH Trễ"])]
-        data["Shuttle Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["Shuttle_Total"], data["Shuttle Trễ"])]
+        # Phục vụ bảng KPI WOW
+        data["LH Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["LH_Total"], data["LH_Tre"])]
+        data["Shuttle Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["Shuttle_Total"], data["Shuttle_Tre"])]
 
         valid_weeks = [3, 4, 5, 6]
         cw_idx = -1
@@ -138,17 +136,15 @@ def format_vn(n):
     return f"{n:,.0f}".replace(",", ".") if pd.notna(n) else ""
 
 def render_dashboard(df, summary, primary_color):
-    # Metrics MTD
-    st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a;'>KPI DASHBOARD</h2>", unsafe_allow_html=True)
-    c = st.columns(6)
+    st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 20px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
+    
+    # 1. Metrics (Inbound, Outbound, Xử lý, Trọng lượng, Missort, Backlog)
+    cols = st.columns(6)
     m_list = [("Inbound", df['Inbound Vol'].sum()), ("Outbound", df['Outbound Vol'].sum()), ("Xử lý", df['Total Process Vol'].sum()), ("Trọng lượng", df['Total Process Wgt'].sum()), ("Missort", df['Missort'].sum()), ("Backlog", df['Backlog'].sum())]
-    for col, (l, v) in zip(c, m_list): col.metric(f"{l} (MTD)", format_vn(v))
+    for col, (l, v) in zip(cols, m_list): col.metric(f"{l} (MTD)", format_vn(v))
 
-    # Bảng KPI WOW (Tự động cập nhật từ logic gốc)
-    # ... (Phần bảng WOW giữ nguyên như code trước của bạn)
-
-    # 1. BIỂU ĐỒ SẢN LƯỢNG
-    st.markdown(f"#### 1. Biểu Đồ Sản Lượng & Năng Suất")
+    # 2. Biểu đồ Sản lượng hàng ngày
+    st.markdown("#### 1. Biểu Đồ Sản Lượng & Năng Suất")
     c1, c2, c3 = st.columns([1.2, 1, 1])
     with c1:
         fig = go.Figure()
@@ -159,24 +155,37 @@ def render_dashboard(df, summary, primary_color):
     with c2: st.plotly_chart(px.bar(df, x='Ngày', y='Total Process Vol', title="Năng suất (Số đơn)", text_auto='.2s').update_layout(plot_bgcolor='white'), use_container_width=True)
     with c3: st.plotly_chart(px.bar(df, x='Ngày', y='Total Process Wgt', title="Năng suất (Kg)", text_auto='.2s').update_layout(plot_bgcolor='white'), use_container_width=True)
 
-    # 2. QUẢN LÝ VẬN TẢI (SỬA THEO YÊU CẦU: CHỈ HIỂN THỊ TỔNG CHUYẾN XE)
-    st.markdown(f"#### 2. Quản lý Vận Tải & Hàng Tồn")
+    # 3. QUẢN LÝ VẬN TẢI (Hàng 2: Chỉ 1 biểu đồ Tổng số chuyến xe)
+    st.markdown("### 2. Quản lý Vận Tải & Hàng Tồn")
     
-    # Biểu đồ Tổng số chuyến xe trong ngày (LH vs Shuttle)
+    # Biểu đồ Tổng số chuyến xe (Linehaul vs Shuttle)
     fig_total = go.Figure()
-    fig_total.add_trace(go.Bar(x=df['Ngày'], y=df['Linehaul_Total'], name="Linehaul", marker_color='#10b981', text=df['Linehaul_Total'], textposition='outside'))
+    fig_total.add_trace(go.Bar(x=df['Ngày'], y=df['LH_Total'], name="Linehaul", marker_color='#10b981', text=df['LH_Total'], textposition='outside'))
     fig_total.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle_Total'], name="Shuttle", marker_color='#3b82f6', text=df['Shuttle_Total'], textposition='outside'))
-    fig_total.update_layout(title="Tổng số chuyến xe phát sinh trong ngày (LH vs Shuttle)", barmode='group', plot_bgcolor='white', height=400, legend=dict(orientation="h", y=1.1))
+    fig_total.update_layout(title="Tổng số chuyến xe (Linehaul vs Shuttle)", barmode='group', plot_bgcolor='white', height=400, legend=dict(orientation="h", y=1.1))
     st.plotly_chart(fig_total, use_container_width=True)
 
-    # 3. CHI TIẾT TRỄ & BACKLOG
-    c_t1, c_t2, c_bl = st.columns(3)
-    with c_t1:
-        st.plotly_chart(px.bar(df, x='Ngày', y='LH Trễ', title="Tổng chuyến Linehaul TRỄ", text_auto=True).update_traces(marker_color='#ef4444').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
-    with c_t2:
-        st.plotly_chart(px.bar(df, x='Ngày', y='Shuttle Trễ', title="Tổng chuyến Shuttle TRỄ", text_auto=True).update_traces(marker_color='#f43f5e').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
-    with c_bl:
-        st.plotly_chart(px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", text_auto=True).update_traces(marker_color='#f59e0b').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
+    # 4. CHI TIẾT TRỄ & BACKLOG (Hàng 3: Tách biệt chi tiết)
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_tre_lh, c_tre_sh, c_backlog = st.columns(3)
+    
+    with c_tre_lh:
+        fig_lh_tre = px.bar(df, x='Ngày', y='LH_Tre', title="Tổng chuyến Linehaul TRỄ", text_auto=True)
+        fig_lh_tre.update_traces(marker_color='#ef4444').update_layout(plot_bgcolor='white', height=350)
+        st.plotly_chart(fig_lh_tre, use_container_width=True)
+        
+    with c_tre_sh:
+        fig_sh_tre = px.bar(df, x='Ngày', y='Shuttle_Tre', title="Tổng chuyến Shuttle TRỄ", text_auto=True)
+        fig_sh_tre.update_traces(marker_color='#f43f5e').update_layout(plot_bgcolor='white', height=350)
+        st.plotly_chart(fig_sh_tre, use_container_width=True)
+        
+    with c_backlog:
+        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", text_auto=True)
+        fig_bl.update_traces(marker_color='#f59e0b').update_layout(plot_bgcolor='white', height=350)
+        st.plotly_chart(fig_bl, use_container_width=True)
+
+    with st.expander("🔍 Chi tiết dữ liệu thô"):
+        st.dataframe(df.set_index("Ngày").T, use_container_width=True)
 
 with tab1: render_dashboard(df_hcm, sum_hcm, "#0284c7")
 with tab2: render_dashboard(df_bn, sum_bn, "#059669")
