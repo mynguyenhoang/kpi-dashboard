@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import requests
 import time
 
@@ -11,8 +10,8 @@ import time
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .kpi-table th { background-color: #1f2937; color: white; padding: 10px 12px; text-align: center; border: 1px solid #d1d5db; font-size: 14px; font-weight: bold; line-height: 1.4; }
-    .kpi-table td { padding: 10px 12px; border: 1px solid #d1d5db; font-size: 14px; vertical-align: middle; line-height: 1.4; }
+    .kpi-table th { background-color: #1f2937; color: white; padding: 10px 12px; text-align: center; border: 1px solid #d1d5db; font-size: 14px; font-weight: bold; }
+    .kpi-table td { padding: 10px 12px; border: 1px solid #d1d5db; font-size: 14px; vertical-align: middle; }
     .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
     .col-metric { font-weight: 600; color: #1e293b; }
     .col-num { text-align: right; font-family: monospace; font-size: 15px; }
@@ -20,7 +19,7 @@ st.markdown("""<style>
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (Logic giữ nguyên)
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -61,7 +60,6 @@ def get_data():
             return np.nan
         except: return np.nan
 
-    weekly_col_idxs = [3, 4, 5, 6]
     date_row_idx = 3
     start_col_idx = -1
     for c in range(2, len(vals[date_row_idx])):
@@ -89,20 +87,22 @@ def get_data():
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
         
-        # --- LOGIC GỐC: LẤY TỔNG CHUYẾN XE VÀ SỐ CHUYẾN TRỄ ---
         data["LH Tổng"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
         data["LH Trễ"] = [clean_val(lht_idx, c) for c in cols_to_scan]
         data["Shuttle Tổng"] = [clean_val(shc_idx, c) for c in cols_to_scan]
         data["Shuttle Trễ"] = [clean_val(sht_idx, c) for c in cols_to_scan]
-        # Tính toán đúng giờ phục vụ bảng KPI (Logic gốc)
+        
         data["LH Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["LH Tổng"], data["LH Trễ"])]
         data["Shuttle Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["Shuttle Tổng"], data["Shuttle Trễ"])]
 
-        valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
-        cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
-        pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
+        valid_weeks = [3, 4, 5, 6]
+        cw_idx = -1
+        for idx in valid_weeks:
+            if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0: cw_idx = idx
+        pw_idx = valid_weeks[valid_weeks.index(cw_idx)-1] if cw_idx in valid_weeks and valid_weeks.index(cw_idx) > 0 else -1
 
         def get_ot_rate(c_idx, t_idx, col_idx):
+            if col_idx == -1: return 0
             chuyen = clean_val(c_idx, col_idx)
             tre = clean_val(t_idx, col_idx)
             if pd.isna(chuyen) or chuyen == 0: return 0
@@ -134,86 +134,56 @@ if df_hcm.empty and df_bn.empty:
 
 tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
 
-def format_vietnam(number):
-    if pd.isna(number): return ""
-    return f"{number:,.0f}".replace(",", ".")
+def format_vn(n):
+    return f"{n:,.0f}".replace(",", ".") if pd.notna(n) else ""
 
 def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     if prev is None or pd.isna(prev) or (prev == 0 and not is_pct):
-        return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur:.2f}%" if is_pct else f"-</td><td class='col-num'>{format_vietnam(cur)}</td><td class='col-num'>-</td>"
+        return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur:.2f}%" if is_pct else f"-</td><td class='col-num'>{format_vn(cur)}</td><td class='col-num'>-</td>"
     diff = cur - prev
     pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
-    bg_color, text_color = ("#dcfce7", "#15803d") if (diff > 0 if not inverse else diff < 0) else ("#fee2e2", "#b91c1c")
-    if diff == 0: bg_color, text_color = "transparent", "#333"
-    sign = "+" if diff > 0 else ""
-    return f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center;'>{sign}{pct:.0f}%</td><td class='col-num'>{'%.2f' % cur + '%' if is_pct else format_vietnam(cur)}</td><td class='col-num'>{'%.2f' % prev + '%' if is_pct else format_vietnam(prev)}</td>"
+    bg, txt = ("#dcfce7", "#15803d") if (diff > 0 if not inverse else diff < 0) else ("#fee2e2", "#b91c1c")
+    if diff == 0: bg, txt = "transparent", "#333"
+    return f"<td style='background-color: {bg}; color: {txt}; font-weight: bold; text-align: center;'>{'+' if diff > 0 else ''}{pct:.0f}%</td><td class='col-num'>{'%.2f' % cur + '%' if is_pct else format_vn(cur)}</td><td class='col-num'>{'%.2f' % prev + '%' if is_pct else format_vn(prev)}</td>"
 
 def render_dashboard(df, summary, primary_color):
-    t_vin, t_vout, t_ms, t_bl = df['Inbound Vol'].sum(), df['Outbound Vol'].sum(), df['Missort'].sum(), df['Backlog'].sum()
-    lh_t, sh_t = df['LH Tổng'].sum(), df['Shuttle Tổng'].sum()
-    lhot_mtd = (df['LH Đúng Giờ'].sum() / lh_t * 100) if lh_t > 0 else 0
-    shot_mtd = (df['Shuttle Đúng Giờ'].sum() / sh_t * 100) if sh_t > 0 else 0
+    # Metrics MTD
+    c = st.columns(6)
+    m_list = [("Inbound", df['Inbound Vol'].sum()), ("Outbound", df['Outbound Vol'].sum()), ("Xử lý", df['Total Process Vol'].sum()), ("Trọng lượng", df['Total Process Wgt'].sum()), ("Missort", df['Missort'].sum()), ("Backlog", df['Backlog'].sum())]
+    for col, (l, v) in zip(c, m_list): col.metric(f"{l} (MTD)", format_vn(v))
 
-    # 1. METRICS
-    cols = st.columns(6)
-    metrics = [("Inbound", t_vin), ("Outbound", t_vout), ("Xử lý", df['Total Process Vol'].sum()), ("Trọng lượng", df['Total Process Wgt'].sum()), ("Missort", t_ms), ("Backlog", t_bl)]
-    for col, (label, val) in zip(cols, metrics): col.metric(f"{label} (MTD)", format_vietnam(val))
-
-    # 2. WOW TABLE
+    # WOW Table
     st.markdown(f"""<table class="kpi-table">
         <thead><tr><th>KPI</th><th>Hạng mục</th><th style="width:100px;">WOW</th><th>Tuần này</th><th>Tuần trước</th><th>MTD</th></tr></thead>
         <tbody>
-            <tr><td rowspan="2" class="col-pillar" style="color:#0ea5e9;">Sản Lượng</td><td class="col-metric">Inbound</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
-            <tr><td class="col-metric">Outbound</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#ef4444;">Chất Lượng</td><td class="col-metric">Missort</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td></tr>
-            <tr><td class="col-metric">Backlog</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải</td><td class="col-metric">LH Đúng Giờ</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
-            <tr><td class="col-metric">Shuttle Đúng Giờ</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#0ea5e9;">Sản Lượng</td><td class="col-metric">Inbound</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vn(df['Inbound Vol'].sum())}</td></tr>
+            <tr><td class="col-metric">Outbound</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vn(df['Outbound Vol'].sum())}</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#ef4444;">Chất Lượng</td><td class="col-metric">Missort</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vn(df['Missort'].sum())}</td></tr>
+            <tr><td class="col-metric">Backlog</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vn(df['Backlog'].sum())}</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải</td><td class="col-metric">LH Đúng Giờ</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{(df['LH Đúng Giờ'].sum()/df['LH Tổng'].sum()*100):.2f}%</td></tr>
+            <tr><td class="col-metric">Shuttle Đúng Giờ</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{(df['Shuttle Đúng Giờ'].sum()/df['Shuttle Tổng'].sum()*100):.2f}%</td></tr>
         </tbody></table>""", unsafe_allow_html=True)
 
-    # 3. BIỂU ĐỒ SẢN LƯỢNG
-    st.markdown(f"<h4 style='color: {primary_color};'>1. Biểu Đồ Sản Lượng & Năng Suất</h4>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1.2, 1, 1])
-    with c1:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', line=dict(color='#0ea5e9')))
-        fig.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
-        fig.update_layout(title="Inbound & Outbound", plot_bgcolor='white', margin=dict(t=40, b=0), legend=dict(orientation="h", y=1.1))
-        st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        st.plotly_chart(px.bar(df, x='Ngày', y='Total Process Vol', title="Năng suất (Đơn)", text_auto='.2s').update_layout(plot_bgcolor='white'), use_container_width=True)
-    with c3:
-        st.plotly_chart(px.bar(df, x='Ngày', y='Total Process Wgt', title="Năng suất (Kg)", text_auto='.2s').update_layout(plot_bgcolor='white'), use_container_width=True)
-
-    # 4. BIỂU ĐỒ VẬN TẢI & TRỄ (PHẦN SỬA THEO YÊU CẦU)
-    st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải & Hàng Tồn</h4>", unsafe_allow_html=True)
-    c4, c5, c6, c7 = st.columns([1, 1, 1, 1])
+    # 4. QUẢN LÝ VẬN TẢI (Tách riêng Tổng và Trễ)
+    st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải (Linehaul & Shuttle)</h4>", unsafe_allow_html=True)
     
-    with c4:
-        # Biểu đồ hiển thị TỔNG CHUYẾN LH
-        fig_lh = px.bar(df, x='Ngày', y='LH Tổng', title="Tổng chuyến Linehaul", text_auto=True)
-        fig_lh.update_traces(marker_color='#10b981').update_layout(plot_bgcolor='white')
-        st.plotly_chart(fig_lh, use_container_width=True)
-        
-    with c5:
-        # Biểu đồ hiển thị TỔNG CHUYẾN SHUTTLE
-        fig_sh = px.bar(df, x='Ngày', y='Shuttle Tổng', title="Tổng chuyến Shuttle", text_auto=True)
-        fig_sh.update_traces(marker_color='#3b82f6').update_layout(plot_bgcolor='white')
-        st.plotly_chart(fig_sh, use_container_width=True)
+    # Row 1: Linehaul
+    r1c1, r1c2 = st.columns(2)
+    with r1c1:
+        st.plotly_chart(px.bar(df, x='Ngày', y='LH Tổng', title="Linehaul - Tổng số chuyến", text_auto=True).update_traces(marker_color='#10b981').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
+    with r1c2:
+        st.plotly_chart(px.bar(df, x='Ngày', y='LH Trễ', title="Linehaul - Tổng số chuyến TRỄ", text_auto=True).update_traces(marker_color='#ef4444').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
 
-    with c6:
-        # Biểu đồ BƠM THÊM: HIỂN THỊ SỐ CHUYẾN TRỄ
-        fig_delay = go.Figure()
-        fig_delay.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'], name="LH Trễ", marker_color='#ef4444', text=df['LH Trễ'], textposition='outside'))
-        fig_delay.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'], name="Shuttle Trễ", marker_color='#f43f5e', text=df['Shuttle Trễ'], textposition='outside'))
-        fig_delay.update_layout(title="Số chuyến xe TRỄ", barmode='group', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(fig_delay, use_container_width=True)
+    # Row 2: Shuttle
+    r2c1, r2c2 = st.columns(2)
+    with r2c1:
+        st.plotly_chart(px.bar(df, x='Ngày', y='Shuttle Tổng', title="Shuttle - Tổng số chuyến", text_auto=True).update_traces(marker_color='#3b82f6').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
+    with r2c2:
+        st.plotly_chart(px.bar(df, x='Ngày', y='Shuttle Trễ', title="Shuttle - Tổng số chuyến TRỄ", text_auto=True).update_traces(marker_color='#f43f5e').update_layout(plot_bgcolor='white', height=300), use_container_width=True)
 
-    with c7:
-        # BIỂU ĐỒ BACKLOG
-        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", text_auto=True)
-        fig_bl.update_traces(marker_color='#f59e0b').update_layout(plot_bgcolor='white')
-        st.plotly_chart(fig_bl, use_container_width=True)
+    # 5. HÀNG TỒN BACKLOG
+    st.markdown(f"<h4 style='color: {primary_color};'>3. Hàng tồn Backlog</h4>", unsafe_allow_html=True)
+    st.plotly_chart(px.bar(df, x="Ngày", y="Backlog", text_auto=True).update_traces(marker_color='#f59e0b').update_layout(plot_bgcolor='white', height=350), use_container_width=True)
 
     with st.expander("🔍 Chi tiết dữ liệu thô"): st.dataframe(df.set_index("Ngày").T, use_container_width=True)
 
