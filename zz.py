@@ -74,17 +74,14 @@ def get_data():
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
         
-        # Dữ liệu gốc từ Feishu
         data["LH Trễ"] = [clean_val(lht_idx, c) for c in cols_to_scan]
         data["Shuttle Trễ"] = [clean_val(sht_idx, c) for c in cols_to_scan]
         
-        # Dữ liệu đúng giờ cho bảng WOW
         lh_c_list = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
         sh_c_list = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
         data["LH Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(lh_c_list, data["LH Trễ"])]
         data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, data["Shuttle Trễ"])]
         
-        # Logic tính WOW
         valid_weeks = [idx for idx in [3, 4, 5, 6] if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
         cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
         pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
@@ -109,7 +106,7 @@ def get_data():
     return extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, 38, 40, 39, 41), extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, 47, 49, 48, 50)
 
 # =================================================================
-# 3. GIAO DIỆN (ĐÃ HOÁN ĐỔI DỮ LIỆU ĐỂ HIỂN THỊ ĐÚNG)
+# 3. GIAO DIỆN (ĐÃ ĐỔI TIÊU ĐỀ THEO YÊU CẦU)
 # =================================================================
 def format_vietnam(number):
     if pd.isna(number): return ""
@@ -146,13 +143,12 @@ def render_dashboard(df, summary, primary_color):
         fig_w.update_traces(marker_color='#818cf8', textposition='outside')
         st.plotly_chart(fig_w, use_container_width=True)
 
-    # 3. QUẢN LÝ VẬN TẢI: ĐÃ ĐẢO DỮ LIỆU ĐỂ KHỚP TIÊU ĐỀ
+    # 3. QUẢN LÝ VẬN TẢI: ĐÃ ĐỔI TÊN TIÊU ĐỀ THEO CHỈ DẪN
     st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải & Hàng Tồn</h4>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     
     with col4:
-        # BIỂU ĐỒ LINEHAUL: Lấy dữ liệu của LH Trễ (Hoặc Shuttle nếu trước đó bị ngược)
-        # Mình đảo lại: y=df['LH Trễ'] cho đúng tên
+        # Đã đổi tiêu đề thành Shuttle cho đúng cột dữ liệu trễ bên trái
         fig_lh = go.Figure()
         fig_lh.add_trace(go.Bar(
             x=df['Ngày'], 
@@ -161,11 +157,11 @@ def render_dashboard(df, summary, primary_color):
             text=df['LH Trễ'].apply(lambda x: f"{int(x)}" if pd.notna(x) and x > 0 else ""), 
             textposition='outside'
         ))
-        fig_lh.update_layout(title="Tổng chuyến Linehaul TRỄ", plot_bgcolor='white', margin=dict(t=40, b=10))
+        fig_lh.update_layout(title="Tổng chuyến Shuttle TRỄ", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_lh, use_container_width=True)
 
     with col5:
-        # BIỂU ĐỒ SHUTTLE: Lấy dữ liệu của Shuttle Trễ
+        # Đã đổi tiêu đề thành Linehaul cho đúng cột dữ liệu trễ bên phải
         fig_sh = go.Figure()
         fig_sh.add_trace(go.Bar(
             x=df['Ngày'], 
@@ -174,7 +170,7 @@ def render_dashboard(df, summary, primary_color):
             text=df['Shuttle Trễ'].apply(lambda x: f"{int(x)}" if pd.notna(x) and x > 0 else ""), 
             textposition='outside'
         ))
-        fig_sh.update_layout(title="Tổng chuyến Shuttle TRỄ", plot_bgcolor='white', margin=dict(t=40, b=10))
+        fig_sh.update_layout(title="Tổng chuyến Linehaul TRỄ", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_sh, use_container_width=True)
 
     with col6:
