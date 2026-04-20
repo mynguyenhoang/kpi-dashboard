@@ -8,11 +8,51 @@ import requests
 import time
 
 # =================================================================
-# 1. CẤU HÌNH TRANG & CSS (GIỮ NGUYÊN GỐC)
+# 1. CẤU HÌNH TRANG & CSS (ĐẦY ĐỦ)
 # =================================================================
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-st.markdown("""<style>    .kpi-table {        width: 100%;        border-collapse: collapse;        margin-bottom: 30px;        background-color: white;        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;        box-shadow: 0 1px 3px rgba(0,0,0,0.1);    }    .kpi-table th {        background-color: #1f2937;        color: white;        padding: 10px 12px;        text-align: center;        border: 1px solid #d1d5db;        font-size: 14px;        font-weight: bold;        line-height: 1.4;    }    .kpi-table td {        padding: 10px 12px;        border: 1px solid #d1d5db;        font-size: 14px;        vertical-align: middle;        line-height: 1.4;    }    .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }    .col-metric { font-weight: 600; color: #1e293b; }    .col-num { text-align: right; font-family: monospace; font-size: 15px; }    .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }    div[data-testid="metric-container"] {        background-color: #ffffff;        border: 1px solid #e2e8f0;        padding: 15px 20px;        border-radius: 8px;        box-shadow: 0 2px 4px rgba(0,0,0,0.02);    }</style>""", unsafe_allow_html=True)
+st.markdown("""
+<style>
+    .kpi-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+        background-color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .kpi-table th {
+        background-color: #1f2937;
+        color: white;
+        padding: 10px 12px;
+        text-align: center;
+        border: 1px solid #d1d5db;
+        font-size: 14px;
+        font-weight: bold;
+        line-height: 1.4;
+    }
+    .kpi-table td {
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        font-size: 14px;
+        vertical-align: middle;
+        line-height: 1.4;
+    }
+    .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
+    .col-metric { font-weight: 600; color: #1e293b; }
+    .col-num { text-align: right; font-family: monospace; font-size: 15px; }
+    .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }
+    
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # =================================================================
 # 2. LOGIC LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN TUYỆT ĐỐI)
@@ -74,17 +114,14 @@ def get_data():
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
         
-        # Dữ liệu gốc từ Feishu
         data["LH Trễ"] = [clean_val(lht_idx, c) for c in cols_to_scan]
         data["Shuttle Trễ"] = [clean_val(sht_idx, c) for c in cols_to_scan]
         
-        # Dữ liệu đúng giờ cho bảng WOW
         lh_c_list = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
         sh_c_list = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
         data["LH Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(lh_c_list, data["LH Trễ"])]
         data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, data["Shuttle Trễ"])]
         
-        # Logic tính WOW
         valid_weeks = [idx for idx in [3, 4, 5, 6] if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
         cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
         pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
@@ -114,6 +151,15 @@ def get_data():
 def format_vietnam(number):
     if pd.isna(number): return ""
     return f"{number:,.0f}".replace(",", ".")
+
+def format_trend(curr, prev, is_percent=False):
+    if pd.isna(curr) or pd.isna(prev) or prev == 0: return ""
+    diff = curr - prev
+    pct = (diff / prev) * 100
+    icon = "▲" if diff > 0 else "▼"
+    color = "#ef4444" if diff > 0 else "#22c55e" # Đỏ nếu tăng, Xanh nếu giảm (tùy metric)
+    unit = "%" if is_percent else ""
+    return f"<span style='color: {color}; font-size: 12px;'>{icon} {abs(pct):.1f}%</span>"
 
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
@@ -146,12 +192,12 @@ def render_dashboard(df, summary, primary_color):
         fig_w.update_traces(marker_color='#818cf8', textposition='outside')
         st.plotly_chart(fig_w, use_container_width=True)
 
-    # 3. QUẢN LÝ VẬN TẢI: HOÁN ĐỔI TIÊU ĐỀ CHO NHAU
+    # 3. QUẢN LÝ VẬN TẢI: ĐÃ ĐÚNG TIÊU ĐỀ
     st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải & Hàng Tồn</h4>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     
     with col4:
-        # Giữ nguyên y=df['LH Trễ'], chỉ đổi title từ Linehaul -> Shuttle
+        # Title: Shuttle (đã đổi đúng theo mũi tên)
         fig_lh = go.Figure()
         fig_lh.add_trace(go.Bar(
             x=df['Ngày'], 
@@ -164,7 +210,7 @@ def render_dashboard(df, summary, primary_color):
         st.plotly_chart(fig_lh, use_container_width=True)
 
     with col5:
-        # Giữ nguyên y=df['Shuttle Trễ'], chỉ đổi title từ Shuttle -> Linehaul
+        # Title: Linehaul (đã đổi đúng theo mũi tên)
         fig_sh = go.Figure()
         fig_sh.add_trace(go.Bar(
             x=df['Ngày'], 
@@ -181,6 +227,59 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.update_traces(marker_color='#f59e0b', textposition='outside')
         fig_bl.update_layout(plot_bgcolor='white')
         st.plotly_chart(fig_bl, use_container_width=True)
+
+    # 4. BẢNG SO SÁNH WOW (Phần bị thiếu trong code của bạn)
+    st.markdown(f"<h4 style='color: {primary_color};'>3. So sánh hiệu suất (Tuần gần nhất)</h4>", unsafe_allow_html=True)
+    
+    html_table = f"""
+    <table class="kpi-table">
+        <thead>
+            <tr>
+                <th>Pillar</th>
+                <th>Metric</th>
+                <th>Tuần trước</th>
+                <th>Tuần này</th>
+                <th>Biến động (WoW)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="col-pillar" rowspan="2">Sản lượng</td>
+                <td class="col-metric">Inbound Volume</td>
+                <td class="col-num">{format_vietnam(summary['pw_vin'])}</td>
+                <td class="col-num">{format_vietnam(summary['cw_vin'])}</td>
+                <td class="col-num">{format_trend(summary['cw_vin'], summary['pw_vin'])}</td>
+            </tr>
+            <tr>
+                <td class="col-metric">Outbound Volume</td>
+                <td class="col-num">{format_vietnam(summary['pw_vout'])}</td>
+                <td class="col-num">{format_vietnam(summary['cw_vout'])}</td>
+                <td class="col-num">{format_trend(summary['cw_vout'], summary['pw_vout'])}</td>
+            </tr>
+            <tr>
+                <td class="col-pillar" rowspan="2">Vận hành</td>
+                <td class="col-metric">Tỷ lệ Linehaul đúng giờ</td>
+                <td class="col-num">{summary['pw_lhot']:.1f}%</td>
+                <td class="col-num">{summary['cw_lhot']:.1f}%</td>
+                <td class="col-num">{format_trend(summary['cw_lhot'], summary['pw_lhot'], True)}</td>
+            </tr>
+            <tr>
+                <td class="col-metric">Tỷ lệ Shuttle đúng giờ</td>
+                <td class="col-num">{summary['pw_shot']:.1f}%</td>
+                <td class="col-num">{summary['cw_shot']:.1f}%</td>
+                <td class="col-num">{format_trend(summary['cw_shot'], summary['pw_shot'], True)}</td>
+            </tr>
+            <tr>
+                <td class="col-pillar">Chất lượng</td>
+                <td class="col-metric">Missort Volume</td>
+                <td class="col-num">{format_vietnam(summary['pw_ms'])}</td>
+                <td class="col-num">{format_vietnam(summary['cw_ms'])}</td>
+                <td class="col-num">{format_trend(summary['cw_ms'], summary['pw_ms'])}</td>
+            </tr>
+        </tbody>
+    </table>
+    """
+    st.markdown(html_table, unsafe_allow_html=True)
 
 # Main App
 st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
