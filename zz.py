@@ -9,46 +9,7 @@ import time
 
 # 1. CẤU HÌNH TRANG & CSS
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
-st.markdown("""
-<style>
-    .kpi-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 30px;
-        background-color: white;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .kpi-table th {
-        background-color: #1f2937;
-        color: white;
-        padding: 10px 12px;
-        text-align: center;
-        border: 1px solid #d1d5db;
-        font-size: 14px;
-        font-weight: bold;
-        line-height: 1.4;
-    }
-    .kpi-table td {
-        padding: 10px 12px;
-        border: 1px solid #d1d5db;
-        font-size: 14px;
-        vertical-align: middle;
-        line-height: 1.4;
-    }
-    .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
-    .col-metric { font-weight: 600; color: #1e293b; }
-    .col-num { text-align: right; font-family: monospace; font-size: 15px; }
-    .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-</style>
-""", unsafe_allow_html=True)
+st.markdown("""<style>    .kpi-table {        width: 100%;        border-collapse: collapse;        margin-bottom: 30px;        background-color: white;        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;        box-shadow: 0 1px 3px rgba(0,0,0,0.1);    }    .kpi-table th {        background-color: #1f2937;        color: white;        padding: 10px 12px;        text-align: center;        border: 1px solid #d1d5db;        font-size: 14px;        font-weight: bold;        line-height: 1.4;    }    .kpi-table td {        padding: 10px 12px;        border: 1px solid #d1d5db;        font-size: 14px;        vertical-align: middle;        line-height: 1.4;    }    .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }    .col-metric { font-weight: 600; color: #1e293b; }    .col-num { text-align: right; font-family: monospace; font-size: 15px; }    .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }    div[data-testid="metric-container"] {        background-color: #ffffff;        border: 1px solid #e2e8f0;        padding: 15px 20px;        border-radius: 8px;        box-shadow: 0 2px 4px rgba(0,0,0,0.02);    }</style>""", unsafe_allow_html=True)
 
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
 def get_tenant_access_token():
@@ -69,10 +30,8 @@ def get_data():
     if not token:
         st.error("Không lấy được Token Feishu.")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-    
-    url = "https://open.feisku.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
+    url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
-    
     max_retries = 3
     res_data = None
     for attempt in range(max_retries):
@@ -89,13 +48,13 @@ def get_data():
                     return (pd.DataFrame(), {}), (pd.DataFrame(), {})
             else:
                 return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-        except:
+        except Exception as e:
             return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-
-    if not res_data: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-    
+    if not res_data:
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
     vals = res_data.get('data', {}).get('valueRange', {}).get('values', [])
-    if not vals or len(vals) < 55: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+    if not vals or len(vals) < 55:
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
     def clean_val(row_idx, col_idx):
         try:
@@ -103,7 +62,7 @@ def get_data():
                 v = vals[row_idx][col_idx]
                 str_v = str(v).strip()
                 if v is None or str_v == "" or "#" in str_v or "IF(" in str_v or "=" in str_v:
-                    return np.nan
+                      return np.nan
                 s = str_v.replace('%', '').replace(',', '').strip()
                 if s == '-': return 0.0
                 return float(s)
@@ -119,7 +78,6 @@ def get_data():
         if val == "1":
             start_col_idx = c
             break
-    
     num_days = 26 
     if start_col_idx != -1:
         max_day = 1
@@ -130,7 +88,6 @@ def get_data():
         num_days = max_day
     else:
         start_col_idx = 6
-
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
     def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
@@ -176,21 +133,18 @@ def get_data():
             "cw_shot": get_ot_rate(shc_idx, sht_idx, cw_idx), "pw_shot": get_ot_rate(shc_idx, sht_idx, pw_idx),
         }
         return pd.DataFrame(data), weekly_summary
-
     data_hcm = extract_hub_data(4, 5, 6, 7, 17, 18, 31, 38, 40, 39, 41)
     data_bn = extract_hub_data(10, 11, 12, 13, 19, 20, 32, 47, 49, 48, 50)
     return data_hcm, data_bn
 
-# 3. GIAO DIỆN HIỂN THỊ
+# 3. GIAO DIỆN HIỂN THỊ CHUNG
 st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
 data_hcm, data_bn = get_data()
 df_hcm, sum_hcm = data_hcm
 df_bn, sum_bn = data_bn
-
 if df_hcm.empty and df_bn.empty:
     st.warning("Đang tải dữ liệu hoặc File Feishu trống...")
     st.stop()
-
 tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
 
 def format_vietnam(number):
@@ -219,31 +173,23 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
-
-    # --- ĐÂY LÀ PHẦN SỬA LOGIC MTD: QUÉT TOÀN BỘ DF ---
+    
+    # SỬA LOGIC MTD: Tính tổng lũy kế tất cả ngày trong tháng từ df
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
     t_win = df['Inbound Wgt'].sum(skipna=True) 
     t_wout = df['Outbound Wgt'].sum(skipna=True) 
     t_ms = df['Missort'].sum(skipna=True)
     t_bl = df['Backlog'].sum(skipna=True)
-
-    # Tính MTD vận tải: (Tổng chuyến đúng / Tổng chuyến thực tế) của cả tháng
-    lh_on_time = df['LH Đúng Giờ'].sum(skipna=True)
-    lh_late = df['LH Trễ'].sum(skipna=True)
-    lh_total = lh_on_time + lh_late
-    lhot_mtd = (lh_on_time / lh_total * 100) if lh_total > 0 else 0
-
-    sh_on_time = df['Shuttle Đúng Giờ'].sum(skipna=True)
-    sh_late = df['Shuttle Trễ'].sum(skipna=True)
-    sh_total = sh_on_time + sh_late
-    shot_mtd = (sh_on_time / sh_total * 100) if sh_total > 0 else 0
-
-    # Tỷ lệ Missort MTD trên tổng Volume
-    ms_rate_mtd = (t_ms / (t_vin + t_vout) * 100) if (t_vin + t_vout) > 0 else 0
-    # -----------------------------------------------
-
+    
+    lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
+    sh_total = df['Shuttle Đúng Giờ'].fillna(0).sum() + df['Shuttle Trễ'].fillna(0).sum()
+    lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
+    shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
+    ms_rate_mtd = (t_ms / (t_vin+t_vout) * 100) if (t_vin+t_vout) > 0 else 0
+    
     cw = summary
+    # 1. HEADER METRICS (MTD)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Tổng Inbound (MTD) | 入库总量", format_vietnam(t_vin))
     c2.metric("Tổng Outbound (MTD) | 出库总量", format_vietnam(t_vout))
@@ -251,6 +197,7 @@ def render_dashboard(df, summary, primary_color):
     c4.metric("Tổng Backlog (MTD) | 积压货物", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # 2. BẢNG TỔNG HỢP SONG NGỮ
     html_table = f"""
     <table class="kpi-table">
         <thead>
@@ -312,6 +259,7 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
 
+    # 3. BIỂU ĐỒ (Giữ nguyên)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Missort | 生产与分拣图表</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
     with col_chart1:
@@ -326,7 +274,6 @@ def render_dashboard(df, summary, primary_color):
         fig_ms.add_trace(go.Scatter(x=df['Ngày'], y=df['Tỷ lệ Missort (%)'], name="Tỷ lệ %", mode='lines+markers', line=dict(color='#ef4444', width=3)), secondary_y=True)
         fig_ms.update_layout(title_text="Phân tích Missort (Số lượng & Tỷ lệ)", plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_ms, use_container_width=True)
-
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải & Hàng Tồn | 运输与积压监控</h4>", unsafe_allow_html=True)
     col_chart3, col_chart4 = st.columns(2)
@@ -342,6 +289,7 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.update_layout(plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10))
         st.plotly_chart(fig_bl, use_container_width=True)
 
+    # 5. BẢNG DỮ LIỆU THÔ (Giữ nguyên)
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô | 原始数据</h4>", unsafe_allow_html=True)
     df_show = df.copy()
     rename_map = {
