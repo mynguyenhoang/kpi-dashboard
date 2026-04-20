@@ -288,26 +288,76 @@ def render_dashboard(df, summary, primary_color):
         fig_prod_w.update_layout(title="Năng suất (Trọng lượng kg)", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
-    st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải & Hàng Tồn</h4>", unsafe_allow_html=True)
+        # 4. BIỂU ĐỒ VẬN TẢI (MỚI)
+    st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải</h4>", unsafe_allow_html=True)
+    
+    # ===== TÍNH TOÁN =====
+    df["Tổng LH"] = df["LH Đúng Giờ"].fillna(0) + df["LH Trễ"].fillna(0)
+    df["Tổng Shuttle"] = df["Shuttle Đúng Giờ"].fillna(0) + df["Shuttle Trễ"].fillna(0)
+    df["Tổng chuyến"] = df["Tổng LH"] + df["Tổng Shuttle"]
+    
     col4, col5, col6 = st.columns([1, 1, 1])
+    
+    # ===== 1. TỔNG CHUYẾN =====
     with col4:
-        fig_lh = go.Figure()
-        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'], name="Đúng", marker_color='#10b981', text=df['LH Đúng Giờ'], textposition='inside'))
-        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'], name="Trễ", marker_color='#f43f5e', text=df['LH Trễ'], textposition='inside'))
-        fig_lh.update_layout(title="Tổng chuyến xe", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(fig_lh, use_container_width=True)
+        fig_total = go.Figure()
+        fig_total.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Tổng LH'], 
+            name="Linehaul", 
+            marker_color='#10b981',
+            text=df['Tổng LH'],
+            textposition='inside'
+        ))
+        fig_total.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Tổng Shuttle'], 
+            name="Shuttle", 
+            marker_color='#3b82f6',
+            text=df['Tổng Shuttle'],
+            textposition='inside'
+        ))
+        fig_total.update_layout(
+            title="Tổng số chuyến xe",
+            barmode='stack',
+            plot_bgcolor='white',
+            legend=dict(orientation="h", y=-0.2)
+        )
+        st.plotly_chart(fig_total, use_container_width=True)
+    
+    # ===== 2. TRỄ LINEHAUL =====
     with col5:
-        fig_sh = go.Figure()
-        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Đúng Giờ'], name="Đúng", marker_color='#10b981', text=df['Shuttle Đúng Giờ'], textposition='inside'))
-        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'], name="Trễ", marker_color='#f43f5e', text=df['Shuttle Trễ'], textposition='inside'))
-        fig_sh.update_layout(title="Số chuyến xe trễ của Linehaul", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(fig_sh, use_container_width=True)
+        fig_lh_late = go.Figure()
+        fig_lh_late.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['LH Trễ'], 
+            name="Trễ LH",
+            marker_color='#ef4444',
+            text=df['LH Trễ'],
+            textposition='outside'
+        ))
+        fig_lh_late.update_layout(
+            title="Số chuyến xe trễ Linehaul",
+            plot_bgcolor='white'
+        )
+        st.plotly_chart(fig_lh_late, use_container_width=True)
+    
+    # ===== 3. TRỄ SHUTTLE =====
     with col6:
-        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", text=df['Backlog'].apply(lambda x: format_vietnam(x) if x > 0 else ""))
-        fig_bl.update_traces(marker_color='#f59e0b', textposition='outside')
-        fig_bl.update_layout(plot_bgcolor='white')
-        st.plotly_chart(fig_bl, use_container_width=True)
+        fig_sh_late = go.Figure()
+        fig_sh_late.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Shuttle Trễ'], 
+            name="Trễ Shuttle",
+            marker_color='#f97316',
+            text=df['Shuttle Trễ'],
+            textposition='outside'
+        ))
+        fig_sh_late.update_layout(
+            title="Số chuyến xe trễ Shuttle",
+            plot_bgcolor='white'
+        )
+        st.plotly_chart(fig_sh_late, use_container_width=True)    
 
     with st.expander("🔍 Chi tiết dữ liệu thô"):
         st.dataframe(df.set_index("Ngày").T, use_container_width=True)
