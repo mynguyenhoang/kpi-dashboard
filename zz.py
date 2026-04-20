@@ -169,7 +169,7 @@ def render_dashboard(df, primary_color):
         st.info("Chưa có dữ liệu cho Hub này.")
         return
 
-    # TÍNH TỔNG MTD
+    # TÍNH TỔNG (MTD)
     total_vol = df['Tổng lượng hàng'].sum(skipna=True) 
     total_weight = df['Tổng trọng lượng (Kg)'].sum(skipna=True)
     total_missort = df['Số đơn Missort'].sum(skipna=True)
@@ -180,7 +180,7 @@ def render_dashboard(df, primary_color):
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
     final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
-    # TÍNH WOW (LINH HOẠT THEO SỐ NGÀY HIỆN CÓ)
+    # TÍNH WOW (Hiển thị mũi tên phần trăm)
     valid_df = df.dropna(subset=['Tổng lượng hàng'])
     delta_vol = delta_wgt = delta_ms = delta_bl = delta_ot = None 
     
@@ -204,31 +204,18 @@ def render_dashboard(df, primary_color):
         pw_ot = (pw['Xe Đúng COT (Tổng)'].sum() / pw_xe_chay * 100) if pw_xe_chay > 0 else 0
         delta_ot = f"{(cw_ot - pw_ot):.1f}% WoW"
 
-    # AUTO ALERTS
-    recent_3_days = valid_df.iloc[-3:]
-    alerts = []
-    for index, row in recent_3_days.iterrows():
-        if pd.notna(row['Backlog tồn đọng']) and row['Backlog tồn đọng'] > 100:
-            alerts.append(f"Ngày {row['Ngày']}: Tồn đọng (Backlog) cao bất thường ({format_vietnam(row['Backlog tồn đọng'])} đơn).")
-        if pd.notna(row['Số đơn Missort']) and row['Số đơn Missort'] > 50:
-            alerts.append(f"Ngày {row['Ngày']}: Missort tăng đột biến ({format_vietnam(row['Số đơn Missort'])} đơn).")
-    
-    if alerts:
-        with st.expander("HỆ THỐNG CẢNH BÁO VẬN HÀNH NGẮN HẠN", expanded=True):
-            for alert in alerts:
-                st.error(alert)
-
-    # HEADER METRICS
+    # HIỂN THỊ METRICS LÊN GIAO DIỆN
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Tổng Sản Lượng", format_vietnam(total_vol), delta=delta_vol)
     c2.metric("Tổng Trọng Lượng", format_vietnam(total_weight) + " kg", delta=delta_wgt)
+    # Dùng delta_color="inverse" để màu đỏ khi lỗi/tồn đọng tăng
     c3.metric(f"Tổng Missort ({final_missort_rate:.2f}%)", format_vietnam(total_missort), delta=delta_ms, delta_color="inverse")
     c4.metric("Tổng Backlog", format_vietnam(total_backlog), delta=delta_bl, delta_color="inverse")
     c5.metric("Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%", delta=delta_ot)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # CHARTS
+    # KHU VỰC VẼ BIỂU ĐỒ
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Đánh giá Sản Lượng & Chất Lượng Phân Loại (Missort)</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
