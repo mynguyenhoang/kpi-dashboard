@@ -186,17 +186,16 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 # HÀM BƠM SIZE CHỮ CỰC ĐẠI VÀ CHỐNG THU NHỎ
 def clean_layout(fig, title):
     fig.update_layout(
-        title=dict(text=title, font=dict(size=15, weight='bold', color='#1e293b')),
+        title=dict(text=title, font=dict(size=18, weight='bold', color='#1e293b')),
         plot_bgcolor='white',
         paper_bgcolor='white',
         margin=dict(t=60, b=20, l=10, r=10),
-        xaxis=dict(showgrid=False, tickfont=dict(size=14, color='#64748b')),
-        yaxis=dict(showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=14, color='#64748b'), zeroline=False),
-        hoverlabel=dict(font_size=16, font_family="Arial"),
-        uniformtext_minsize=18,  # KHÔNG CHO PHÉP CHỮ NHỎ HƠN 18
-        uniformtext_mode='show'  # ÉP HIỂN THỊ DÙ CÓ ĐÈ LÊN NHAU
+        xaxis=dict(showgrid=False, tickfont=dict(size=12, color='#64748b')), # Giảm nhẹ size trục X
+        yaxis=dict(showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=12, color='#64748b'), zeroline=False),
+        hoverlabel=dict(font_size=14, font_family="Arial"),
+        uniformtext_minsize=10,  # SỬA: Giảm giới hạn nhỏ nhất xuống 10
+        uniformtext_mode='hide'  # SỬA: 'hide' để nếu các cột đứng sát nhau quá, nó sẽ tự động ẩn bớt chữ đi cho đỡ rối
     )
-    # Tắt cliponaxis để chữ bự không bị lẹm viền
     fig.update_traces(cliponaxis=False)
     return fig
 
