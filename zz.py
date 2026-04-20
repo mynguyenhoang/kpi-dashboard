@@ -48,7 +48,7 @@ st.markdown("""<style>
     }
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN GỐC)
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN LOGIC GỐC)
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -187,7 +187,7 @@ def get_data():
     
     return data_hcm, data_bn
 
-# 3. GIAO DIỆN
+# 3. GIAO DIỆN HIỂN THỊ CHUNG
 st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
 
 data_hcm, data_bn = get_data()
@@ -262,7 +262,7 @@ def render_dashboard(df, summary, primary_color):
             <tr><td class="col-metric">Shuttle Đúng Giờ (%)</td>{get_wow_cell(cw['cw_shot'], cw['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
         </tbody></table>""", unsafe_allow_html=True)
     
-    # 3. BIỂU ĐỒ VỚI SỐ TO (CẬP NHẬT TEXTFONT)
+    # 3. BIỂU ĐỒ CHỈNH SỐ BỰ
     st.markdown(f"<h4 style='color: {primary_color};'>1. Biểu Đồ Sản Lượng & Năng Suất (Số đơn vs Trọng lượng)</h4>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1.2, 1, 1])
     with col1:
@@ -274,6 +274,7 @@ def render_dashboard(df, summary, primary_color):
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
         fig_vol.update_layout(title="Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, b=10), legend=dict(orientation="h", y=1.1))
         st.plotly_chart(fig_vol, use_container_width=True)
+        
     with col2:
         fig_prod_v = go.Figure()
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.8,
@@ -283,6 +284,7 @@ def render_dashboard(df, summary, primary_color):
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="red")
         fig_prod_v.update_layout(title="Năng suất (Số đơn)", plot_bgcolor='white', yaxis=dict(range=[0, df['Total Process Vol'].max()*1.2]))
         st.plotly_chart(fig_prod_v, use_container_width=True)
+        
     with col3:
         fig_prod_w = go.Figure()
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.8,
@@ -293,7 +295,7 @@ def render_dashboard(df, summary, primary_color):
         fig_prod_w.update_layout(title="Năng suất (Trọng lượng kg)", plot_bgcolor='white', yaxis=dict(range=[0, df['Total Process Wgt'].max()*1.2]))
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN (CẬP NHẬT TEXTFONT)
+    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN (CHỈNH SỐ BỰ)
     st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải & Hàng Tồn</h4>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     with col4:
