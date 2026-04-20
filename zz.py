@@ -187,7 +187,7 @@ def get_data():
     
     return data_hcm, data_bn
 
-# 3. GIAO DIỆN HIỂN THỊ CHUNG
+# 3. GIAO DIỆN
 st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
 
 data_hcm, data_bn = get_data()
@@ -195,7 +195,7 @@ df_hcm, sum_hcm = data_hcm
 df_bn, sum_bn = data_bn
 
 if df_hcm.empty and df_bn.empty:
-    st.warning("Đang tải dữ liệu hoặc File Feishu trống...")
+    st.warning("Đang tải dữ liệu...")
     st.stop()
 
 tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
@@ -210,7 +210,6 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
         return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
     diff = cur - prev
     pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
-    
     if diff > 0:
         bg_color, text_color, sign = "#dcfce7", "#15803d", "+"
         if inverse: bg_color, text_color = "#fee2e2", "#b91c1c"
@@ -219,21 +218,16 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
         if inverse: bg_color, text_color = "#dcfce7", "#15803d"
     else:
         bg_color, text_color, sign = "transparent", "#333", ""
-        
     wow_str = f"{sign}{pct:.0f}%" if not is_pct else f"{sign}{diff:.1f}%"
     cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
     prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
-    
-    wow_td = f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center;'>{wow_str}</td>"
-    return wow_td + f"<td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
+    return f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center;'>{wow_str}</td><td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
 
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
     
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
-    t_win = df['Inbound Wgt'].sum(skipna=True) 
-    t_wout = df['Outbound Wgt'].sum(skipna=True) 
     t_tproc_vol = df['Total Process Vol'].sum(skipna=True)
     t_tproc_wgt = df['Total Process Wgt'].sum(skipna=True)
     t_ms = df['Missort'].sum(skipna=True)
@@ -241,157 +235,77 @@ def render_dashboard(df, summary, primary_color):
     
     lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
     sh_total = df['Shuttle Đúng Giờ'].fillna(0).sum() + df['Shuttle Trễ'].fillna(0).sum()
-    
     lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
-    ms_rate_mtd = (t_ms / (t_vin+t_vout) * 100) if (t_vin+t_vout) > 0 else 0
     
     cw = summary
     
+    # 1. METRICS
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Tổng Inbound (MTD) | 入库总量", format_vietnam(t_vin))
-    c2.metric("Tổng Outbound (MTD) | 出库总量", format_vietnam(t_vout))
-    c3.metric("Tổng Lượng xử lý (MTD)", format_vietnam(t_tproc_vol))
-    c4.metric("Tổng trọng lượng (MTD)", format_vietnam(t_tproc_wgt))
-    c5.metric(f"Tổng Missort (MTD) ({ms_rate_mtd:.2f}%)", format_vietnam(t_ms))
-    c6.metric("Tổng Backlog (MTD)", format_vietnam(t_bl))
-    st.markdown("<br>", unsafe_allow_html=True)
+    c1.metric("Inbound (MTD)", format_vietnam(t_vin))
+    c2.metric("Outbound (MTD)", format_vietnam(t_vout))
+    c3.metric("Xử lý (MTD)", format_vietnam(t_tproc_vol))
+    c4.metric("Trọng lượng (MTD)", format_vietnam(t_tproc_wgt))
+    c5.metric("Missort (MTD)", format_vietnam(t_ms))
+    c6.metric("Backlog (MTD)", format_vietnam(t_bl))
     
-    html_table = f"""
-    <table class="kpi-table">
-        <thead>
-            <tr>
-                <th>KPI<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>关键指标</span></th>
-                <th>Hạng mục<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>指标</span></th>
-                <th style="width: 100px;">WOW<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>周环比</span></th>
-                <th>Tuần này<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>本周</span></th>
-                <th>Tuần trước<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>上周</span></th>
-                <th>MTD<br><span style='font-size:12px; font-weight:normal; color:#cbd5e1;'>月度累计</span></th>
-            </tr>
-        </thead>
+    # 2. WOW TABLE
+    st.markdown(f"""<table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Hạng mục</th><th style="width:100px;">WOW</th><th>Tuần này</th><th>Tuần trước</th><th>MTD</th></tr></thead>
         <tbody>
-            <tr>
-                <td rowspan="4" class="col-pillar" style="color: #0ea5e9;">Sản Lượng<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>生产</span></td>
-                <td class="col-metric">Inbound (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>入境货物</span></td>
-                {get_wow_cell(cw['cw_vin'], cw['pw_vin'])}
-                <td class="col-mtd">{format_vietnam(t_vin)}</td>
-            </tr>
-            <tr>
-                <td class="col-metric">Inbound (kg)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>进口重量</span></td>
-                {get_wow_cell(cw['cw_win'], cw['pw_win'])}
-                <td class="col-mtd">{format_vietnam(t_win)}</td>
-            </tr>
-            <tr>
-                <td class="col-metric">Outbound (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>出境货物</span></td>
-                {get_wow_cell(cw['cw_vout'], cw['pw_vout'])}
-                <td class="col-mtd">{format_vietnam(t_vout)}</td>
-            </tr>
-            <tr>
-                <td class="col-metric">Outbound (kg)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>出口重量</span></td>
-                {get_wow_cell(cw['cw_wout'], cw['pw_wout'])}
-                <td class="col-mtd">{format_vietnam(t_wout)}</td>
-            </tr>
-            <tr>
-                <td rowspan="2" class="col-pillar" style="color: #ef4444;">Chất Lượng<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>质量</span></td>
-                <td class="col-metric">Tổng Missort (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>分拣错误</span></td>
-                {get_wow_cell(cw['cw_ms'], cw['pw_ms'], inverse=True)}
-                <td class="col-mtd">{format_vietnam(t_ms)}</td>
-            </tr>
-            <tr>
-                <td class="col-metric">Backlog Tồn Đọng (đơn)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>积压货物</span></td>
-                {get_wow_cell(cw['cw_bl'], cw['pw_bl'], inverse=True)}
-                <td class="col-mtd">{format_vietnam(t_bl)}</td>
-            </tr>
-            <tr>
-                <td rowspan="2" class="col-pillar" style="color: #10b981;">Vận Tải<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>干线/班车</span></td>
-                <td class="col-metric">Linehaul Đúng Giờ (%)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>干线准点率</span></td>
-                {get_wow_cell(cw['cw_lhot'], cw['pw_lhot'], is_pct=True)}
-                <td class="col-mtd">{lhot_mtd:.2f}%</td>
-            </tr>
-            <tr>
-                <td class="col-metric">Shuttle Đúng Giờ (%)<br><span style='font-size:12px; color:#64748b; font-weight:normal;'>班车准点率</span></td>
-                {get_wow_cell(cw['cw_shot'], cw['pw_shot'], is_pct=True)}
-                <td class="col-mtd">{shot_mtd:.2f}%</td>
-            </tr>
-        </tbody>
-    </table>
-    """
-    st.markdown(html_table, unsafe_allow_html=True)
+            <tr><td rowspan="2" class="col-pillar" style="color:#0ea5e9;">Sản Lượng</td><td class="col-metric">Inbound (đơn)</td>{get_wow_cell(cw['cw_vin'], cw['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
+            <tr><td class="col-metric">Outbound (đơn)</td>{get_wow_cell(cw['cw_vout'], cw['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#ef4444;">Chất Lượng</td><td class="col-metric">Missort (đơn)</td>{get_wow_cell(cw['cw_ms'], cw['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td></tr>
+            <tr><td class="col-metric">Backlog (đơn)</td>{get_wow_cell(cw['cw_bl'], cw['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải</td><td class="col-metric">LH Đúng Giờ (%)</td>{get_wow_cell(cw['cw_lhot'], cw['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
+            <tr><td class="col-metric">Shuttle Đúng Giờ (%)</td>{get_wow_cell(cw['cw_shot'], cw['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
+        </tbody></table>""", unsafe_allow_html=True)
     
-    # 3. BIỂU ĐỒ - CẬP NHẬT BIỂU ĐỒ NĂNG SUẤT
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Năng Suất | 生产与效率图表</h4>", unsafe_allow_html=True)
-    col_chart1, col_chart2 = st.columns(2)
-    with col_chart1:
+    # 3. BIỂU ĐỒ SẢN LƯỢNG & NĂNG SUẤT
+    st.markdown(f"<h4 style='color: {primary_color};'>1. Biểu Đồ Sản Lượng & Năng Suất</h4>", unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', line=dict(color='#0ea5e9')))
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
-        fig_vol.update_layout(title="Sản lượng Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+        fig_vol.update_layout(title="Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_vol, use_container_width=True)
-        
-    with col_chart2:
-        # BIỂU ĐỒ NĂNG SUẤT (PRODUCTIVITY) THAY THẾ MISSORT
+    with col2:
         fig_prod = go.Figure()
-        fig_prod.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Total Process Vol'], 
-            name="Sản lượng xử lý",
-            marker_color=primary_color,
-            opacity=0.7
-        ))
-        # Đường line trung bình năng suất
-        mean_val = df['Total Process Vol'].mean()
-        fig_prod.add_hline(y=mean_val, line_dash="dash", line_color="red", annotation_text=f"TB: {mean_val:,.0f}")
-        
-        fig_prod.update_layout(
-            title_text="Phân tích Năng suất xử lý hàng ngày (Productivity)", 
-            plot_bgcolor='white', 
-            margin=dict(t=40, l=10, r=10, b=10), 
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
+        fig_prod.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color=primary_color, opacity=0.7))
+        fig_prod.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="red")
+        fig_prod.update_layout(title="Năng suất xử lý (Productivity)", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_prod, use_container_width=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải & Hàng Tồn | 运输与积压监控</h4>", unsafe_allow_html=True)
-    col_chart3, col_chart4 = st.columns(2)
-    with col_chart3:
-        fig_xe = go.Figure()
-        fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'].fillna(0)+df['Shuttle Đúng Giờ'].fillna(0), name="Đúng giờ COT", marker_color='#10b981'))
-        fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'].fillna(0)+df['Shuttle Trễ'].fillna(0), name="Trễ giờ COT", marker_color='#f43f5e'))
-        fig_xe.update_layout(title="Kiểm soát Chuyến xe chạy COT (LH + Shuttle)", barmode='stack', plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        st.plotly_chart(fig_xe, use_container_width=True)
-    with col_chart4:
-        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng cuối ngày")
-        fig_bl.update_traces(marker_color='#f59e0b', text=[format_vietnam(v) if pd.notna(v) and v > 0 else "" for v in df['Backlog']], textposition="outside")
-        fig_bl.update_layout(plot_bgcolor='white', margin=dict(t=40, l=10, r=10, b=10))
+    # 4. BIỂU ĐỒ VẬN TẢI (TÁCH RIÊNG LH & SHUTTLE)
+    st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải (LH vs Shuttle) & Hàng Tồn</h4>", unsafe_allow_html=True)
+    col3, col4, col5 = st.columns([1, 1, 1])
+    
+    with col3:
+        fig_lh = go.Figure()
+        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'].fillna(0), name="LH Đúng giờ", marker_color='#10b981'))
+        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'].fillna(0), name="LH Trễ", marker_color='#f43f5e'))
+        fig_lh.update_layout(title="Kiểm soát Linehaul (LH)", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
+        st.plotly_chart(fig_lh, use_container_width=True)
+        
+    with col4:
+        fig_sh = go.Figure()
+        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Đúng Giờ'].fillna(0), name="Shuttle Đúng giờ", marker_color='#10b981'))
+        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'].fillna(0), name="Shuttle Trễ", marker_color='#f43f5e'))
+        fig_sh.update_layout(title="Kiểm soát Shuttle", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
+        st.plotly_chart(fig_sh, use_container_width=True)
+        
+    with col5:
+        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng")
+        fig_bl.update_traces(marker_color='#f59e0b')
+        fig_bl.update_layout(plot_bgcolor='white')
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    # 5. BẢNG DỮ LIỆU THÔ
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô | 原始数据</h4>", unsafe_allow_html=True)
-    df_show = df.copy()
-    rename_map = {
-        "Inbound Vol": "Inbound (đơn)", "Outbound Vol": "Outbound (đơn)",
-        "Inbound Wgt": "Inbound (kg)", "Outbound Wgt": "Outbound (kg)",
-        "Total Process Vol": "Sản lượng xử lý (đơn)",
-        "Total Process Wgt": "Trọng lượng xử lý (kg)",
-        "Missort": "Số đơn Missort", "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%)",
-        "Backlog": "Backlog (đơn)", "LH Đúng Giờ": "LH Đúng Giờ",
-        "LH Trễ": "LH Trễ", "Shuttle Đúng Giờ": "Shuttle Đúng Giờ", "Shuttle Trễ": "Shuttle Trễ"
-    }
-    df_show = df_show.rename(columns=rename_map)
-    
-    for col in df_show.columns:
-        if col != "Ngày":
-            if "Tỷ lệ" in col:
-                df_show[col] = df_show[col].apply(lambda x: f"{x:.2f}%" if (pd.notna(x) and x != "") else "")
-            else:
-                df_show[col] = df_show[col].apply(format_vietnam)
-                
-    df_show = df_show.set_index("Ngày").T
-    with st.expander("🔍 Bấm vào đây để xem Bảng Chi Tiết Thô Hàng Ngày | 每日原始数据", expanded=True):
-        st.dataframe(df_show, use_container_width=True)
+    # 5. DATA TABLE
+    with st.expander("🔍 Chi tiết dữ liệu thô"):
+        st.dataframe(df.set_index("Ngày").T, use_container_width=True)
 
 with tab1:
-    render_dashboard(df_hcm, sum_hcm, "#0284c7") 
-    
+    render_dashboard(df_hcm, sum_hcm, "#0284c7")
 with tab2:
     render_dashboard(df_bn, sum_bn, "#059669")
