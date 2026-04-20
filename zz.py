@@ -346,16 +346,23 @@ def render_dashboard(df, summary, primary_color):
         fig_lh_late.update_layout(height=400, yaxis=dict(range=[0, max_y_lh]))
         st.plotly_chart(fig_lh_late, use_container_width=True)
 
+    # --- ĐÃ SỬA LẠI: ẨN SỐ 0 TRONG BẢNG DỮ LIỆU THÔ ---
     with st.expander("🔍 Chi tiết dữ liệu thô"):
         df_display = df.copy()
+        
         for col in df_display.columns:
             if col == "Ngày": 
                 continue
             def clean_format(x, is_pct):
+                # Ẩn các giá trị rỗng/NaN
                 if pd.isna(x) or str(x).strip().lower() in ["none", "nan", ""]:
                     return ""
                 try:
                     f_x = float(x)
+                    # ẨN LUÔN NẾU SỐ LÀ 0
+                    if f_x == 0:
+                        return ""
+                        
                     val_str = str(int(f_x)) if f_x.is_integer() else str(f_x)
                     return f"{val_str}%" if is_pct else val_str
                 except:
