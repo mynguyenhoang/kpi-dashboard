@@ -215,7 +215,7 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
         if inverse: bg_color, text_color = "#fee2e2", "#b91c1c"
     elif diff < 0:
         bg_color, text_color, sign = "#fee2e2", "#b91c1c", ""
-        if inverse: bg_color, text_color = "#dcfce7", "#15803d"
+        if inverse: bg_color, text_color = "#dcfce7", "#15803d"    
     else:
         bg_color, text_color, sign = "transparent", "#333", ""
     wow_str = f"{sign}{pct:.0f}%" if not is_pct else f"{sign}{diff:.1f}%"
@@ -300,11 +300,10 @@ def render_dashboard(df, summary, primary_color):
     
     # ===== 1. TỔNG CHUYẾN =====
     with col4:
-        fig_total = go.Figure()
         fig_total.add_trace(go.Bar(
         x=df['Ngày'], 
         y=df['Tổng LH'], 
-        name="Shuttle", 
+        name="Linehaul", 
         ))
         fig_total.add_trace(go.Bar(
         x=df['Ngày'], 
