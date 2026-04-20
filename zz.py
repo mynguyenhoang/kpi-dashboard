@@ -133,49 +133,69 @@ def get_data():
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
     def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
-        data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
-        data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
-        data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
-        data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
-        data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
-        data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
-        data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
-        data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
+    data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
+    data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
+    data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
+    data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
+    data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
+    data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
+    data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
+    data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
 
-        # Logistic vận tải - xử lý 0 khi NaN để tránh lỗi tính toán cộng trừ
-        lh_c_list = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
-        lh_t_list = [clean_val(lht_idx, c) if pd.notna(clean_val(lht_idx, c)) else 0 for c in cols_to_scan]
-        sh_c_list = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
-        sh_t_list = [clean_val(sht_idx, c) if pd.notna(clean_val(sht_idx, c)) else 0 for c in cols_to_scan]
+    lh_c_list = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
+    lh_t_list = [clean_val(lht_idx, c) if pd.notna(clean_val(lht_idx, c)) else 0 for c in cols_to_scan]
+    sh_c_list = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
+    sh_t_list = [clean_val(sht_idx, c) if pd.notna(clean_val(sht_idx, c)) else 0 for c in cols_to_scan]
 
-        data["LH Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(lh_c_list, lh_t_list)]
-        data["LH Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(lh_c_list, lh_t_list)]
-        data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
-        data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
+    data["LH Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(lh_c_list, lh_t_list)]
+    data["LH Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(lh_c_list, lh_t_list)]
+    data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
+    data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
 
-        valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
-        cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
-        pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
+    valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
+    cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
+    pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
 
-        def get_ot_rate(c_idx, t_idx, col_idx):
-            if col_idx == -1: return 0
-            chuyen = clean_val(c_idx, col_idx)
-            tre = clean_val(t_idx, col_idx)
-            if pd.isna(chuyen) or chuyen == 0: return 0
-            tre = 0 if pd.isna(tre) else tre
-            return ((chuyen - tre) / chuyen) * 100
+    def get_ot_rate(c_idx, t_idx, col_idx):
+        if col_idx == -1: return 0
+        chuyen = clean_val(c_idx, col_idx)
+        tre = clean_val(t_idx, col_idx)
+        if pd.isna(chuyen) or chuyen == 0: return 0
+        tre = 0 if pd.isna(tre) else tre
+        return ((chuyen - tre) / chuyen) * 100
 
-        weekly_summary = {
-            "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_win": clean_val(win_idx, cw_idx) if cw_idx != -1 else 0, "pw_win": clean_val(win_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_wout": clean_val(wout_idx, cw_idx) if wout_idx != -1 else 0, "pw_wout": clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx), "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
-            "cw_shot": get_ot_rate(shc_idx, sht_idx, cw_idx), "pw_shot": get_ot_rate(shc_idx, sht_idx, pw_idx),
-        }
-        return pd.DataFrame(data), weekly_summary
+    weekly_summary = {
+        "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0,
+        "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
+        "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0,
+        "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
+        "cw_win": clean_val(win_idx, cw_idx) if cw_idx != -1 else 0,
+        "pw_win": clean_val(win_idx, pw_idx) if pw_idx != -1 else 0,
+        "cw_wout": clean_val(wout_idx, cw_idx) if cw_idx != -1 else 0,
+        "pw_wout": clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
+        "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0,
+        "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
+        "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0,
+        "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
+        "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx),
+        "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
+        "cw_shot": get_ot_rate(shc_idx, sht_idx, cw_idx),
+        "pw_shot": get_ot_rate(shc_idx, sht_idx, pw_idx),
+    }
+
+    # 🔥 NEW: MONTHLY TOTAL (cột cuối sheet)
+    mt_col = len(vals[0]) - 1
+
+    monthly_summary = {
+        "vin": clean_val(vin_idx, mt_col),
+        "vout": clean_val(vout_idx, mt_col),
+        "win": clean_val(win_idx, mt_col),
+        "wout": clean_val(wout_idx, mt_col),
+        "ms": clean_val(ms_idx, mt_col),
+        "bl": clean_val(bl_idx, mt_col),
+    }
+
+    return pd.DataFrame(data), weekly_summary, monthly_summary
 
     data_hcm = extract_hub_data(4, 5, 6, 7, 17, 18, 31, 38, 40, 39, 41)
     data_bn = extract_hub_data(10, 11, 12, 13, 19, 20, 32, 47, 49, 48, 50)
