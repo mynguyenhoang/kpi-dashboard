@@ -186,7 +186,7 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 # HÀM BƠM SIZE CHỮ CỰC ĐẠI VÀ CHỐNG THU NHỎ
 def clean_layout(fig, title):
     fig.update_layout(
-        title=dict(text=title, font=dict(size=17, weight='bold', color='#1e293b')),
+        title=dict(text=title, font=dict(size=15, weight='bold', color='#1e293b')),
         plot_bgcolor='white',
         paper_bgcolor='white',
         margin=dict(t=60, b=20, l=10, r=10),
