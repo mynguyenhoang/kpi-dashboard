@@ -267,7 +267,7 @@ def render_dashboard(df, summary, primary_color):
     lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
 
-    # 1. METRICS (ĐÃ BỎ ICON)
+    # 1. METRICS
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Inbound (MTD)", format_vietnam(t_vin))
     c2.metric("Outbound (MTD)", format_vietnam(t_vout))
@@ -305,42 +305,41 @@ def render_dashboard(df, summary, primary_color):
         
     with col2:
         fig_prod_v = go.Figure()
+        # Phóng to font size lên 16 cho Năng suất (Số đơn)
         fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color='#38bdf8', opacity=0.85, 
-                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], textposition='outside', textfont=dict(size=14, color='#0f172a')))
+                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Vol']], textposition='outside', textfont=dict(size=16, color='#0f172a')))
         fig_prod_v.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất (Số đơn)")
         st.plotly_chart(fig_prod_v, use_container_width=True)
         
     with col3:
         fig_prod_w = go.Figure()
+        # Phóng to font size lên 16 cho Năng suất (Trọng lượng)
         fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], marker_color='#818cf8', opacity=0.85, 
-                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], textposition='outside', textfont=dict(size=14, color='#0f172a')))
+                                    text=[f"<b>{format_vietnam(v)}</b>" for v in df['Total Process Wgt']], textposition='outside', textfont=dict(size=16, color='#0f172a')))
         fig_prod_w.add_hline(y=df['Total Process Wgt'].mean(), line_dash="dash", line_color="#ef4444")
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất (Trọng lượng kg)")
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN (ĐÃ TỐI ƯU GIAO DIỆN)
+    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 800; margin-top: 40px; border-bottom: 2px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & Hàng Tồn</h3>", unsafe_allow_html=True)
     
     col_t1, col_t2 = st.columns([2, 1])
     with col_t1:
         fig_trans = go.Figure()
         
-        # Cột Shuttle (Màu xanh, text tự động căn chỉnh để không bị khuất)
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Chuyến']], 
             textposition='auto', textfont=dict(size=14, color='white')
         ))
         
-        # Cột Linehaul (ĐỔI SANG MÀU CAM cho dễ nhìn)
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Chuyến']], 
             textposition='auto', textfont=dict(size=14, color='white')
         ))
         
-        # TỔNG TRÊN ĐẦU: Sử dụng Scatter text để không bị cộng dồn trục Y gấp đôi
         df_total = df['Shuttle Chuyến'].fillna(0) + df['Linehaul Chuyến'].fillna(0)
         fig_trans.add_trace(go.Scatter(
             x=df['Ngày'], y=df_total, name="Tổng", mode='text',
@@ -350,7 +349,6 @@ def render_dashboard(df, summary, primary_color):
         ))
         
         fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul)")
-        # Tăng max trục Y lên 15% để số tổng ở trên cùng không bị cắt mất
         max_y = df_total.max() * 1.15 if df_total.max() > 0 else 10
         fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=15)), height=450, yaxis=dict(range=[0, max_y]))
         st.plotly_chart(fig_trans, use_container_width=True)
