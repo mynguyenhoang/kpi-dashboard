@@ -271,7 +271,10 @@ def render_dashboard(df, summary, primary_color):
     total_backlog = df['Backlog tồn đọng'].sum(skipna=True)
     total_xe_dung = df['Xe Đúng COT (Tổng)'].sum(skipna=True)
     total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
+    
+    # ĐÂY RỒI! DÒNG BỊ THIẾU ĐÃ ĐƯỢC BỔ SUNG LẠI Ở ĐÂY NÈ!
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
+    final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
     cw_vol, pw_vol = summary.get("cw_vol", 0), summary.get("pw_vol", 0)
     cw_wgt, pw_wgt = summary.get("cw_wgt", 0), summary.get("pw_wgt", 0)
