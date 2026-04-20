@@ -6,122 +6,154 @@ import plotly.graph_objects as go
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG & CSS (Giữ nguyên style chuẩn của bạn)
-st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
-st.markdown("""<style>
-    .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .kpi-table th { background-color: #1f2937; color: white; padding: 10px 12px; text-align: center; border: 1px solid #d1d5db; font-size: 14px; font-weight: bold; }
-    .kpi-table td { padding: 10px 12px; border: 1px solid #d1d5db; font-size: 14px; vertical-align: middle; }
-    .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
-    .col-metric { font-weight: 600; color: #1e293b; }
-    .col-num { text-align: right; font-family: monospace; font-size: 15px; }
-    .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }
-    div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-</style>""", unsafe_allow_html=True)
+# 1. CẤU HÌNH TRANG
+st.set_page_config(page_title="J&T Cargo KPI", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (Logic logic logic)
+# CSS đơn giản, chuyên nghiệp
+st.markdown("""
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { 
+        font-size: 16px; 
+        font-weight: 600; 
+        padding: 12px 24px;
+        color: #64748b;
+    }
+    .stTabs [aria-selected="true"] { color: #dc2626 !important; border-bottom: 3px solid #dc2626 !important; }
+    div[data-testid="metric-container"] {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    div[data-testid="metric-container"] label { font-size: 14px !important; color: #64748b !important; font-weight: 500 !important; }
+    div[data-testid="metric-container"] div { font-size: 28px !important; color: #1e293b !important; font-weight: 700 !important; }
+</style>
+""", unsafe_allow_html=True)
+
+# 2. HÀM LẤY DỮ LIỆU
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
         payload = {"app_id": "cli_a9456e412bb89bce", "app_secret": "BwSAuHHsv2woEdIGTqJoKboH6i1i7qBB"}
         r = requests.post(url, json=payload, timeout=10)
         return r.json().get("tenant_access_token")
-    except: return None
+    except:
+        return None
 
 @st.cache_data(ttl=60)
 def get_data():
     token = get_tenant_access_token()
-    if not token: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+    if not token:
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
-    max_retries = 3
-    res_data = None
-    for attempt in range(max_retries):
+
+    for _ in range(3):
         try:
             res = requests.get(url, headers=headers, timeout=30).json()
             if res.get("code") == 0:
-                res_data = res
                 break
             time.sleep(2)
-        except: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-    if not res_data: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-    vals = res_data.get('data', {}).get('valueRange', {}).get('values', [])
-    if not vals or len(vals) < 55: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+        except:
+            return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+
+    vals = res.get('data', {}).get('valueRange', {}).get('values', [])
+    if not vals or len(vals) < 55:
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
     def clean_val(row_idx, col_idx):
         try:
             if row_idx < len(vals) and col_idx < len(vals[row_idx]):
                 v = vals[row_idx][col_idx]
                 str_v = str(v).strip()
-                if v is None or str_v == "" or "#" in str_v or "IF(" in str_v or "=" in str_v: return np.nan
+                if v is None or str_v == "" or "#" in str_v or "IF(" in str_v: 
+                    return np.nan
                 s = str_v.replace('%', '').replace(',', '').strip()
                 if s == '-': return 0.0
                 return float(s)
             return np.nan
-        except: return np.nan
+        except:
+            return np.nan
 
-    date_row_idx = 3
+    weekly_col_idxs = [3, 4, 5, 6] 
+    date_row_idx = 3 
     start_col_idx = -1
+
     for c in range(2, len(vals[date_row_idx])):
         if str(vals[date_row_idx][c]).strip() == "1":
             start_col_idx = c
             break
-    num_days = 26
-    if start_col_idx != -1:
-        max_day = 1
-        for c in range(start_col_idx, len(vals[date_row_idx])):
-            val = str(vals[date_row_idx][c]).strip()
-            if val.isdigit(): max_day = max(max_day, int(val))
-        num_days = max_day
-    else: start_col_idx = 6
+    if start_col_idx == -1:
+        start_col_idx = 6
+
+    num_days = 26 
+    max_day = 1
+    for c in range(start_col_idx, len(vals[date_row_idx])):
+        val = str(vals[date_row_idx][c]).strip()
+        if val.isdigit():
+            max_day = max(max_day, int(val))
+    num_days = max_day
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
     def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
-        data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
-        data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
-        data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
-        data["Total Process Vol"] = [clean_val(tproc_vol_idx, c) for c in cols_to_scan]
-        data["Total Process Wgt"] = [clean_val(tproc_wgt_idx, c) for c in cols_to_scan]
+        data = {"Ngày": [f"{i+1}" for i in range(num_days)]}
+        data["Inbound"] = [clean_val(vin_idx, c) for c in cols_to_scan]
+        data["Outbound"] = [clean_val(vout_idx, c) for c in cols_to_scan]
+        data["Process"] = [clean_val(tproc_vol_idx, c) for c in cols_to_scan]
+        data["Weight"] = [clean_val(tproc_wgt_idx, c) for c in cols_to_scan]
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
-        
-        # Dữ liệu chính cho biểu đồ Vận Tải
-        data["LH_Total"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
-        data["LH_Tre"] = [clean_val(lht_idx, c) for c in cols_to_scan]
-        data["Shuttle_Total"] = [clean_val(shc_idx, c) for c in cols_to_scan]
-        data["Shuttle_Tre"] = [clean_val(sht_idx, c) for c in cols_to_scan]
-        
-        # Phục vụ bảng KPI WOW
-        data["LH Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["LH_Total"], data["LH_Tre"])]
-        data["Shuttle Đúng Giờ"] = [(c - t) if (pd.notna(c) and pd.notna(t)) else np.nan for c, t in zip(data["Shuttle_Total"], data["Shuttle_Tre"])]
 
-        valid_weeks = [3, 4, 5, 6]
-        cw_idx = -1
-        for idx in valid_weeks:
-            if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0: cw_idx = idx
-        pw_idx = valid_weeks[valid_weeks.index(cw_idx)-1] if cw_idx in valid_weeks and valid_weeks.index(cw_idx) > 0 else -1
+        lh_c = [clean_val(lhc_idx, c) if pd.notna(clean_val(lhc_idx, c)) else 0 for c in cols_to_scan]
+        lh_t = [clean_val(lht_idx, c) if pd.notna(clean_val(lht_idx, c)) else 0 for c in cols_to_scan]
+        sh_c = [clean_val(shc_idx, c) if pd.notna(clean_val(shc_idx, c)) else 0 for c in cols_to_scan]
+        sh_t = [clean_val(sht_idx, c) if pd.notna(clean_val(sht_idx, c)) else 0 for c in cols_to_scan]
+
+        data["LH_OK"] = [(c - t) if c > 0 else 0 for c, t in zip(lh_c, lh_t)]
+        data["LH_Late"] = [t if t > 0 else 0 for c, t in zip(lh_c, lh_t)]
+        data["SH_OK"] = [(c - t) if c > 0 else 0 for c, t in zip(sh_c, sh_t)]
+        data["SH_Late"] = [t if t > 0 else 0 for c, t in zip(sh_c, sh_t)]
+
+        valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
+        cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
+        pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
 
         def get_ot_rate(c_idx, t_idx, col_idx):
+            if col_idx == -1: return 0
             chuyen = clean_val(c_idx, col_idx)
             tre = clean_val(t_idx, col_idx)
             if pd.isna(chuyen) or chuyen == 0: return 0
-            return ((chuyen - (0 if pd.isna(tre) else tre)) / chuyen) * 100
+            return ((chuyen - (tre if pd.notna(tre) else 0)) / chuyen) * 100
 
-        weekly_summary = {
-            "cw_vin": clean_val(vin_idx, cw_idx), "pw_vin": clean_val(vin_idx, pw_idx),
-            "cw_vout": clean_val(vout_idx, cw_idx), "pw_vout": clean_val(vout_idx, pw_idx),
-            "cw_ms": clean_val(ms_idx, cw_idx), "pw_ms": clean_val(ms_idx, pw_idx),
-            "cw_bl": clean_val(bl_idx, cw_idx), "pw_bl": clean_val(bl_idx, pw_idx),
-            "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx), "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
-            "cw_shot": get_ot_rate(shc_idx, sht_idx, cw_idx), "pw_shot": get_ot_rate(shc_idx, sht_idx, pw_idx),
+        summary = {
+            "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, 
+            "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, 
+            "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, 
+            "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, 
+            "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx), 
+            "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
+            "cw_shot": get_ot_rate(shc_idx, sht_idx, cw_idx), 
+            "pw_shot": get_ot_rate(shc_idx, sht_idx, pw_idx),
         }
-        return pd.DataFrame(data), weekly_summary
+        return pd.DataFrame(data), summary
 
     data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, 38, 40, 39, 41)
     data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, 47, 49, 48, 50)
+
     return data_hcm, data_bn
 
 # 3. GIAO DIỆN
+st.markdown("<h1 style='text-align: center; font-size: 32px; font-weight: 800; color: #dc2626; margin-bottom: 8px;'>J&T CARGO</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 18px; color: #64748b; margin-bottom: 32px;'>KPI Dashboard</p>", unsafe_allow_html=True)
+
 data_hcm, data_bn = get_data()
 df_hcm, sum_hcm = data_hcm
 df_bn, sum_bn = data_bn
@@ -130,62 +162,211 @@ if df_hcm.empty and df_bn.empty:
     st.warning("Đang tải dữ liệu...")
     st.stop()
 
-tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
+tab1, tab2 = st.tabs(["Hồ Chí Minh Hub", "Bắc Ninh Hub"])
 
-def format_vn(n):
-    return f"{n:,.0f}".replace(",", ".") if pd.notna(n) else ""
+def fmt(num):
+    if pd.isna(num): return "0"
+    return f"{int(num):,}".replace(",", ".")
 
-def render_dashboard(df, summary, primary_color):
-    st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 20px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
+def render_dashboard(df, summary):
+    # METRICS
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("Inbound", fmt(df['Inbound'].sum()))
+    c2.metric("Outbound", fmt(df['Outbound'].sum()))
+    c3.metric("Xử lý", fmt(df['Process'].sum()))
+    c4.metric("Trọng lượng", fmt(df['Weight'].sum()))
+    c5.metric("Missort", fmt(df['Missort'].sum()), delta=f"{(df['Missort'].sum()/df['Process'].sum()*100):.1f}%" if df['Process'].sum() > 0 else "0%")
+    c6.metric("Backlog", fmt(df['Backlog'].sum()))
+
+    # CHART 1: Inbound/Outbound Trend
+    st.markdown("<h3 style='font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 32px; margin-bottom: 16px;'>Xu hướng Inbound & Outbound</h3>", unsafe_allow_html=True)
     
-    # 1. Metrics (Inbound, Outbound, Xử lý, Trọng lượng, Missort, Backlog)
-    cols = st.columns(6)
-    m_list = [("Inbound", df['Inbound Vol'].sum()), ("Outbound", df['Outbound Vol'].sum()), ("Xử lý", df['Total Process Vol'].sum()), ("Trọng lượng", df['Total Process Wgt'].sum()), ("Missort", df['Missort'].sum()), ("Backlog", df['Backlog'].sum())]
-    for col, (l, v) in zip(cols, m_list): col.metric(f"{l} (MTD)", format_vn(v))
+    fig1 = go.Figure()
+    fig1.add_trace(go.Scatter(
+        x=df['Ngày'], y=df['Inbound'],
+        mode='lines+markers',
+        name='Inbound',
+        line=dict(color='#dc2626', width=3),
+        marker=dict(size=8, color='#dc2626', line=dict(width=2, color='white')),
+        fill='tozeroy',
+        fillcolor='rgba(220, 38, 38, 0.1)'
+    ))
+    fig1.add_trace(go.Scatter(
+        x=df['Ngày'], y=df['Outbound'],
+        mode='lines+markers',
+        name='Outbound',
+        line=dict(color='#ea580c', width=3),
+        marker=dict(size=8, color='#ea580c', line=dict(width=2, color='white'))
+    ))
+    fig1.update_layout(
+        height=380,
+        margin=dict(t=20, b=40, l=60, r=20),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        legend=dict(orientation="h", y=1.1, x=0.5, xanchor='center', font=dict(size=13)),
+        xaxis=dict(
+            title="Ngày",
+            titlefont=dict(size=13, color='#64748b'),
+            tickfont=dict(size=12, color='#64748b'),
+            showgrid=False,
+            linecolor='#e2e8f0',
+            linewidth=2
+        ),
+        yaxis=dict(
+            title="Số đơn",
+            titlefont=dict(size=13, color='#64748b'),
+            tickfont=dict(size=12, color='#64748b'),
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            linecolor='#e2e8f0',
+            linewidth=2
+        ),
+        hovermode='x unified'
+    )
+    st.plotly_chart(fig1, use_container_width=True)
 
-    # 2. Biểu đồ Sản lượng hàng ngày
-    st.markdown("#### 1. Biểu Đồ Sản Lượng & Năng Suất")
-    c1, c2, c3 = st.columns([1.2, 1, 1])
-    with c1:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', line=dict(color='#0ea5e9')))
-        fig.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
-        fig.update_layout(title="Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, b=10), legend=dict(orientation="h", y=1.1))
-        st.plotly_chart(fig, use_container_width=True)
-    with c2: st.plotly_chart(px.bar(df, x='Ngày', y='Total Process Vol', title="Năng suất (Số đơn)", text_auto='.2s').update_layout(plot_bgcolor='white'), use_container_width=True)
-    with c3: st.plotly_chart(px.bar(df, x='Ngày', y='Total Process Wgt', title="Năng suất (Kg)", text_auto='.2s').update_layout(plot_bgcolor='white'), use_container_width=True)
-
-    # 3. QUẢN LÝ VẬN TẢI (Hàng 2: Chỉ 1 biểu đồ Tổng số chuyến xe)
-    st.markdown("### 2. Quản lý Vận Tải & Hàng Tồn")
+    # CHART 2: Productivity
+    col1, col2 = st.columns(2)
     
-    # Biểu đồ Tổng số chuyến xe (Linehaul vs Shuttle)
-    fig_total = go.Figure()
-    fig_total.add_trace(go.Bar(x=df['Ngày'], y=df['LH_Total'], name="Linehaul", marker_color='#10b981', text=df['LH_Total'], textposition='outside'))
-    fig_total.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle_Total'], name="Shuttle", marker_color='#3b82f6', text=df['Shuttle_Total'], textposition='outside'))
-    fig_total.update_layout(title="Tổng số chuyến xe (Linehaul vs Shuttle)", barmode='group', plot_bgcolor='white', height=400, legend=dict(orientation="h", y=1.1))
-    st.plotly_chart(fig_total, use_container_width=True)
-
-    # 4. CHI TIẾT TRỄ & BACKLOG (Hàng 3: Tách biệt chi tiết)
-    st.markdown("<br>", unsafe_allow_html=True)
-    c_tre_lh, c_tre_sh, c_backlog = st.columns(3)
-    
-    with c_tre_lh:
-        fig_lh_tre = px.bar(df, x='Ngày', y='LH_Tre', title="Tổng chuyến Linehaul TRỄ", text_auto=True)
-        fig_lh_tre.update_traces(marker_color='#ef4444').update_layout(plot_bgcolor='white', height=350)
-        st.plotly_chart(fig_lh_tre, use_container_width=True)
+    with col1:
+        st.markdown("<h3 style='font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px;'>Năng suất xử lý (Đơn)</h3>", unsafe_allow_html=True)
+        avg_val = df['Process'].mean()
+        colors = ['#dc2626' if v >= avg_val else '#94a3b8' for v in df['Process']]
         
-    with c_tre_sh:
-        fig_sh_tre = px.bar(df, x='Ngày', y='Shuttle_Tre', title="Tổng chuyến Shuttle TRỄ", text_auto=True)
-        fig_sh_tre.update_traces(marker_color='#f43f5e').update_layout(plot_bgcolor='white', height=350)
-        st.plotly_chart(fig_sh_tre, use_container_width=True)
+        fig2 = go.Figure()
+        fig2.add_trace(go.Bar(
+            x=df['Ngày'],
+            y=df['Process'],
+            marker_color=colors,
+            text=[fmt(v) for v in df['Process']],
+            textposition='outside',
+            textfont=dict(size=12, color='#1e293b'),
+            marker_line_width=0
+        ))
+        fig2.add_hline(y=avg_val, line_dash="dash", line_color="#dc2626", line_width=2,
+                      annotation_text=f"Trung bình: {fmt(avg_val)}",
+                      annotation_position="top right",
+                      annotation_font=dict(size=12, color='#dc2626'))
+        fig2.update_layout(
+            height=320,
+            margin=dict(t=30, b=40, l=60, r=20),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            xaxis=dict(tickfont=dict(size=11, color='#64748b'), showgrid=False),
+            yaxis=dict(tickfont=dict(size=11, color='#64748b'), showgrid=True, gridcolor='#f1f5f9'),
+            bargap=0.35,
+            showlegend=False
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+    
+    with col2:
+        st.markdown("<h3 style='font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px;'>Năng suất (Kg)</h3>", unsafe_allow_html=True)
+        avg_wgt = df['Weight'].mean()
+        colors2 = ['#ea580c' if v >= avg_wgt else '#94a3b8' for v in df['Weight']]
         
-    with c_backlog:
-        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", text_auto=True)
-        fig_bl.update_traces(marker_color='#f59e0b').update_layout(plot_bgcolor='white', height=350)
-        st.plotly_chart(fig_bl, use_container_width=True)
+        fig3 = go.Figure()
+        fig3.add_trace(go.Bar(
+            x=df['Ngày'],
+            y=df['Weight'],
+            marker_color=colors2,
+            text=[f"{v/1000:.0f}k" if v >= 1000 else fmt(v) for v in df['Weight']],
+            textposition='outside',
+            textfont=dict(size=12, color='#1e293b'),
+            marker_line_width=0
+        ))
+        fig3.add_hline(y=avg_wgt, line_dash="dash", line_color="#ea580c", line_width=2,
+                      annotation_text=f"TB: {fmt(avg_wgt)}",
+                      annotation_position="top right",
+                      annotation_font=dict(size=12, color='#ea580c'))
+        fig3.update_layout(
+            height=320,
+            margin=dict(t=30, b=40, l=60, r=20),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            xaxis=dict(tickfont=dict(size=11, color='#64748b'), showgrid=False),
+            yaxis=dict(tickfont=dict(size=11, color='#64748b'), showgrid=True, gridcolor='#f1f5f9'),
+            bargap=0.35,
+            showlegend=False
+        )
+        st.plotly_chart(fig3, use_container_width=True)
 
-    with st.expander("🔍 Chi tiết dữ liệu thô"):
-        st.dataframe(df.set_index("Ngày").T, use_container_width=True)
+    # CHART 3: Transport & Quality
+    st.markdown("<h3 style='font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 24px; margin-bottom: 16px;'>Vận tải & Chất lượng</h3>", unsafe_allow_html=True)
+    
+    col3, col4, col5 = st.columns(3)
+    
+    with col3:
+        fig4 = go.Figure()
+        fig4.add_trace(go.Bar(x=df['Ngày'], y=df['LH_OK'], name='Đúng giờ', marker_color='#16a34a',
+                             text=[str(int(v)) if v > 0 else "" for v in df['LH_OK']], 
+                             textposition='inside', textfont=dict(size=11, color='white')))
+        fig4.add_trace(go.Bar(x=df['Ngày'], y=df['LH_Late'], name='Trễ', marker_color='#dc2626',
+                             text=[str(int(v)) if v > 0 else "" for v in df['LH_Late']], 
+                             textposition='inside', textfont=dict(size=11, color='white')))
+        fig4.update_layout(
+            title=dict(text='Linehaul', font=dict(size=14, color='#1e293b')),
+            height=280,
+            barmode='stack',
+            margin=dict(t=40, b=30, l=40, r=20),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            legend=dict(orientation="h", y=1.15, x=0.5, xanchor='center', font=dict(size=10)),
+            xaxis=dict(tickfont=dict(size=10, color='#64748b'), showgrid=False),
+            yaxis=dict(tickfont=dict(size=10, color='#64748b'), showgrid=True, gridcolor='#f1f5f9'),
+            bargap=0.3
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+    
+    with col4:
+        fig5 = go.Figure()
+        fig5.add_trace(go.Bar(x=df['Ngày'], y=df['SH_OK'], name='Đúng giờ', marker_color='#0891b2',
+                             text=[str(int(v)) if v > 0 else "" for v in df['SH_OK']], 
+                             textposition='inside', textfont=dict(size=11, color='white')))
+        fig5.add_trace(go.Bar(x=df['Ngày'], y=df['SH_Late'], name='Trễ', marker_color='#f59e0b',
+                             text=[str(int(v)) if v > 0 else "" for v in df['SH_Late']], 
+                             textposition='inside', textfont=dict(size=11, color='white')))
+        fig5.update_layout(
+            title=dict(text='Shuttle', font=dict(size=14, color='#1e293b')),
+            height=280,
+            barmode='stack',
+            margin=dict(t=40, b=30, l=40, r=20),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            legend=dict(orientation="h", y=1.15, x=0.5, xanchor='center', font=dict(size=10)),
+            xaxis=dict(tickfont=dict(size=10, color='#64748b'), showgrid=False),
+            yaxis=dict(tickfont=dict(size=10, color='#64748b'), showgrid=True, gridcolor='#f1f5f9'),
+            bargap=0.3
+        )
+        st.plotly_chart(fig5, use_container_width=True)
+    
+    with col5:
+        fig6 = go.Figure()
+        fig6.add_trace(go.Bar(
+            x=df['Ngày'], 
+            y=df['Backlog'], 
+            marker_color='#7c3aed',
+            text=[str(int(v)) if v > 0 else "" for v in df['Backlog']], 
+            textposition='outside',
+            textfont=dict(size=11, color='#1e293b')
+        ))
+        fig6.update_layout(
+            title=dict(text='Backlog', font=dict(size=14, color='#1e293b')),
+            height=280,
+            margin=dict(t=40, b=30, l=40, r=20),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            xaxis=dict(tickfont=dict(size=10, color='#64748b'), showgrid=False),
+            yaxis=dict(tickfont=dict(size=10, color='#64748b'), showgrid=True, gridcolor='#f1f5f9'),
+            bargap=0.3,
+            showlegend=False
+        )
+        st.plotly_chart(fig6, use_container_width=True)
 
-with tab1: render_dashboard(df_hcm, sum_hcm, "#0284c7")
-with tab2: render_dashboard(df_bn, sum_bn, "#059669")
+    with st.expander("📋 Xem dữ liệu chi tiết"):
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+with tab1:
+    render_dashboard(df_hcm, sum_hcm)
+with tab2:
+    render_dashboard(df_bn, sum_bn)
