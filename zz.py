@@ -308,66 +308,76 @@ df["Tổng chuyến"] = df["Tổng LH"] + df["Tổng Shuttle"]
 
 col4, col5, col6 = st.columns([1, 1, 1])
 
-    # ===== 1. TỔNG CHUYẾN =====
-    with col4:
+    # 4. BIỂU ĐỒ VẬN TẢI (MỚI)
+st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải</h4>", unsafe_allow_html=True)
+
+# ===== TÍNH TOÁN =====
+df["Tổng LH"] = df["LH Đúng Giờ"].fillna(0) + df["LH Trễ"].fillna(0)
+df["Tổng Shuttle"] = df["Shuttle Đúng Giờ"].fillna(0) + df["Shuttle Trễ"].fillna(0)
+df["Tổng chuyến"] = df["Tổng LH"] + df["Tổng Shuttle"]
+
+col4, col5, col6 = st.columns([1, 1, 1])
+
+# ===== 1. TỔNG CHUYẾN =====
+with col4:
         fig_total = go.Figure()
         fig_total.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Tổng LH'], 
-            name="Linehaul", 
-            marker_color='#10b981',
-            text=df['Tổng LH'],
-            textposition='inside'
-        ))
+        x=df['Ngày'], 
+        y=df['Tổng LH'], 
+        name="Linehaul", 
+        marker_color='#10b981',
+        text=df['Tổng LH'],
+        textposition='inside'
+    ))
         fig_total.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Tổng Shuttle'], 
-            name="Shuttle", 
-            marker_color='#3b82f6',
-            text=df['Tổng Shuttle'],
-            textposition='inside'
-        ))
+        x=df['Ngày'], 
+        y=df['Tổng Shuttle'], 
+        name="Shuttle", 
+        marker_color='#3b82f6',
+        text=df['Tổng Shuttle'],
+        textposition='inside'
+    ))
         fig_total.update_layout(
-            title="Tổng số chuyến xe",
-            barmode='stack',
-            plot_bgcolor='white',
-            legend=dict(orientation="h", y=-0.2)
-        )
-        st.plotly_chart(fig_total, use_container_width=True)
-    
-    # ===== 2. TRỄ LINEHAUL =====
-    with col5:
-        fig_lh_late = go.Figure()
-        fig_lh_late.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['LH Trễ'], 
-            name="Trễ LH",
-            marker_color='#ef4444',
-            text=df['LH Trễ'],
-            textposition='outside'
-        ))
-        fig_lh_late.update_layout(
-            title="Số chuyến xe trễ Linehaul",
-            plot_bgcolor='white'
-        )
-        st.plotly_chart(fig_lh_late, use_container_width=True)
-    
-    # ===== 3. TRỄ SHUTTLE =====
-    with col6:
-        fig_sh_late = go.Figure()
-        fig_sh_late.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Shuttle Trễ'], 
-            name="Trễ Shuttle",
-            marker_color='#f97316',
-            text=df['Shuttle Trễ'],
-            textposition='outside'
-        ))
-        fig_sh_late.update_layout(
-            title="Số chuyến xe trễ Shuttle",
-            plot_bgcolor='white'
-        )
-        st.plotly_chart(fig_sh_late, use_container_width=True)
+        title="Tổng số chuyến xe",
+        barmode='stack',
+        plot_bgcolor='white',
+        legend=dict(orientation="h", y=-0.2)
+    )
+    st.plotly_chart(fig_total, use_container_width=True)
+
+# ===== 2. TRỄ LINEHAUL =====
+with col5:
+    fig_lh_late = go.Figure()
+    fig_lh_late.add_trace(go.Bar(
+        x=df['Ngày'], 
+        y=df['LH Trễ'], 
+        name="Trễ LH",
+        marker_color='#ef4444',
+        text=df['LH Trễ'],
+        textposition='outside'
+    ))
+    fig_lh_late.update_layout(
+        title="Số chuyến xe trễ Linehaul",
+        plot_bgcolor='white'
+    )
+    st.plotly_chart(fig_lh_late, use_container_width=True)
+
+# ===== 3. TRỄ SHUTTLE =====
+with col6:
+    fig_sh_late = go.Figure()
+    fig_sh_late.add_trace(go.Bar(
+        x=df['Ngày'], 
+        y=df['Shuttle Trễ'], 
+        name="Trễ Shuttle",
+        marker_color='#f97316',
+        text=df['Shuttle Trễ'],
+        textposition='outside'
+    ))
+    fig_sh_late.update_layout(
+        title="Số chuyến xe trễ Shuttle",
+        plot_bgcolor='white'
+    )
+    st.plotly_chart(fig_sh_late, use_container_width=True)
 
     with st.expander("🔍 Chi tiết dữ liệu thô"):
         st.dataframe(df.set_index("Ngày").T, use_container_width=True)
