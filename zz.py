@@ -104,7 +104,7 @@ def get_data():
         data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
         
-        # --- Bơm COT ---
+        # --- DỮ LIỆU COT MỚI ---
         data["COT Total"] = [clean_val(cot_total_idx, c) for c in cols_to_scan]
         data["COT Ontime"] = [clean_val(cot_ontime_idx, c) for c in cols_to_scan]
         data["COT Rate (%)"] = [(o / t * 100) if (t > 0) else np.nan for t, o in zip(data["COT Total"], data["COT Ontime"])]
@@ -147,7 +147,7 @@ def get_data():
         }
         return pd.DataFrame(data), weekly_summary
 
-    # Mapping COT: HCM (Dòng 36-37 trong ảnh => Index code 35-36), BN (Dòng 45-46 => Index code 44-45)
+    # HCM: Dòng 36, 37 (Index 35, 36) | Bắc Ninh: Dòng 45, 46 (Index 44, 45)
     data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, shc_idx=38, sht_idx=40, lhc_idx=39, lht_idx=41, cot_total_idx=35, cot_ontime_idx=36)
     data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, shc_idx=47, sht_idx=49, lhc_idx=48, lht_idx=50, cot_total_idx=44, cot_ontime_idx=45)
     return data_hcm, data_bn
@@ -195,6 +195,7 @@ def clean_layout(fig, title):
         yaxis=dict(showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=14, color='#64748b'), zeroline=False),
         hoverlabel=dict(font_size=15)
     )
+    fig.update_traces(cliponaxis=False)
     return fig
 
 def render_dashboard(df, summary, primary_color):
@@ -203,6 +204,7 @@ def render_dashboard(df, summary, primary_color):
     # Tính MTD
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
+    t_tproc_vol = df['Total Process Vol'].sum(skipna=True)
     t_tproc_wgt = df['Total Process Wgt'].sum(skipna=True)
     t_ms = df['Missort'].sum(skipna=True)
     t_bl = df['Backlog'].sum(skipna=True)
@@ -217,84 +219,102 @@ def render_dashboard(df, summary, primary_color):
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Inbound (MTD)", format_vietnam(t_vin))
     c2.metric("Outbound (MTD)", format_vietnam(t_vout))
-    c3.metric("Trọng lượng (MTD)", format_vietnam(t_tproc_wgt))
-    c4.metric("Đơn đúng COT", f"{cot_mtd:.1f}%")
+    c3.metric("Xử lý (MTD)", format_vietnam(t_tproc_vol))
+    c4.metric("Trọng lượng (Kg)", format_vietnam(t_tproc_wgt))
     c5.metric("Missort (MTD)", format_vietnam(t_ms))
     c6.metric("Backlog (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE
+    # 2. WOW TABLE - GIỮ NGUYÊN SONG NGỮ VIỆT TRUNG
     st.markdown(f"""<table class="kpi-table">
         <thead><tr><th>KPI</th><th>Hạng mục</th><th style="width:110px;">WOW</th><th>Tuần này</th><th>Tuần trước</th><th>MTD</th></tr></thead>
         <tbody>
-            <tr><td rowspan="3" class="col-pillar" style="color:#0ea5e9;">Sản Lượng</td><td class="col-metric">Inbound (đơn)</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
-            <tr><td class="col-metric">Outbound (đơn)</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
-            <tr><td class="col-metric">Trọng lượng (kg)</td>{get_wow_cell(summary['cw_tproc_wgt'], summary['pw_tproc_wgt'])}<td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td></tr>
-            <tr><td rowspan="3" class="col-pillar" style="color:#ef4444;">Chất Lượng</td><td class="col-metric">Missort (đơn)</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td></tr>
-            <tr><td class="col-metric">Backlog (đơn)</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
-            <tr><td class="col-metric">Đơn hàng đúng COT (%)</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td></tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải</td><td class="col-metric">LH Đúng Giờ (%)</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
-            <tr><td class="col-metric">Shuttle Đúng Giờ (%)</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
+            <tr><td rowspan="3" class="col-pillar" style="color:#0ea5e9;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
+            <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
+            <tr><td class="col-metric">Trọng lượng (kg) | 重量 kg</td>{get_wow_cell(summary['cw_tproc_wgt'], summary['pw_tproc_wgt'])}<td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td></tr>
+            <tr><td rowspan="3" class="col-pillar" style="color:#ef4444;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td></tr>
+            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
+            <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải | 运输</td><td class="col-metric">LH Đúng Giờ (%) | 干线准时率</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
+            <tr><td class="col-metric">Shuttle Đúng Giờ (%) | 支线准时率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
         </tbody></table>""", unsafe_allow_html=True)
 
     # 3. BIỂU ĐỒ SẢN LƯỢNG & COT
-    st.markdown(f"<h3 style='color: {primary_color}; font-weight: 800; margin-top: 30px; border-bottom: 2px solid {primary_color}; padding-bottom: 5px;'>1. Sản Lượng & Chất Lượng Đơn Hàng</h3>", unsafe_allow_html=True)
-    col1, col2 = st.columns([1.5, 1])
+    st.markdown(f"<h3 style='color: {primary_color}; font-weight: 800; margin-top: 30px; border-bottom: 2px solid {primary_color}; padding-bottom: 5px;'>1. Sản Lượng & Năng Suất | 生产与产能</h3>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1.2, 1, 1])
     
     with col1:
-        fig_prod = go.Figure()
-        fig_prod.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], name="Sản lượng", marker_color='#38bdf8', opacity=0.7,
-                                  text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Vol']], textposition='outside'))
-        fig_prod.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Vol'], name="Xu hướng", line=dict(color='#ef4444', width=3, shape='spline')))
-        fig_prod = clean_layout(fig_prod, "Năng suất & Xu hướng xử lý (Đơn)")
-        fig_prod.update_layout(height=450, showlegend=False)
-        st.plotly_chart(fig_prod, use_container_width=True)
+        fig_vol = go.Figure()
+        fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound | 入库", fill='tozeroy', mode='lines+text', 
+                                     text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Inbound Vol']], 
+                                     textposition="top center", textfont=dict(size=14, color='#0369a1'), line=dict(color='#0ea5e9', width=3)))
+        fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound | 出库", line=dict(color='#f59e0b', dash='dot', width=3)))
+        fig_vol = clean_layout(fig_vol, "Inbound & Outbound hàng ngày | 每日入库/出库")
+        fig_vol.update_layout(legend=dict(orientation="h", y=1.1), height=480)
+        st.plotly_chart(fig_vol, use_container_width=True)
         
     with col2:
-        fig_cot = go.Figure()
-        fig_cot.add_trace(go.Bar(x=df['Ngày'], y=df['COT Total'], name="Tổng đơn gửi", marker_color='#cbd5e1', opacity=0.5))
-        fig_cot.add_trace(go.Scatter(x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ Đúng COT", yaxis="y2", line=dict(color='#10b981', width=4), mode='lines+markers+text',
-                                     text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], textposition="top center", textfont=dict(color='#047857', size=13)))
-        fig_cot = clean_layout(fig_cot, "Tỷ lệ Đơn hàng đúng COT (%)")
-        fig_cot.update_layout(height=450, showlegend=False, yaxis2=dict(overlaying='y', side='right', range=[0, 115], showgrid=False))
-        st.plotly_chart(fig_cot, use_container_width=True)
+        fig_prod_v = go.Figure()
+        fig_prod_v.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], name="Năng suất", marker_color='#38bdf8', opacity=0.8,
+                                    text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Vol']], textposition='outside'))
+        fig_prod_v.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Vol'], name="Xu hướng", line=dict(color='#ef4444', width=3, shape='spline')))
+        fig_prod_v = clean_layout(fig_prod_v, "Năng suất | 产能 (Số đơn | 单数)")
+        fig_prod_v.update_layout(height=480, showlegend=False)
+        st.plotly_chart(fig_prod_v, use_container_width=True)
+        
+    with col3:
+        fig_prod_w = go.Figure()
+        fig_prod_w.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Wgt'], name="Trọng lượng", marker_color='#818cf8', opacity=0.8,
+                                    text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Wgt']], textposition='outside'))
+        fig_prod_w.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Wgt'], name="Xu hướng", line=dict(color='#ef4444', width=3, shape='spline')))
+        fig_prod_w = clean_layout(fig_prod_w, "Năng suất | 产能 (Trọng lượng | 重量 kg)")
+        fig_prod_w.update_layout(height=480, showlegend=False)
+        st.plotly_chart(fig_prod_w, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI & TRỄ XE
-    st.markdown(f"<h3 style='color: {primary_color}; font-weight: 800; margin-top: 40px; border-bottom: 2px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & Hàng Tồn</h3>", unsafe_allow_html=True)
-    col_t1, col_t2 = st.columns([2, 1])
+    # 4. BIỂU ĐỒ VẬN TẢI & COT (%)
+    st.markdown(f"<h3 style='color: {primary_color}; font-weight: 800; margin-top: 40px; border-bottom: 2px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & COT | 运输与准时出库管理</h3>", unsafe_allow_html=True)
+    col_t1, col_t2 = st.columns([2, 1.2])
+    
     with col_t1:
         fig_trans = go.Figure()
         fig_trans.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', text=[int(x) if x>0 else "" for x in df['Shuttle Chuyến']], textposition='inside'))
         fig_trans.add_trace(go.Bar(x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', text=[int(x) if x>0 else "" for x in df['Linehaul Chuyến']], textposition='inside'))
-        fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul)")
-        fig_trans.update_layout(barmode='stack', height=450, legend=dict(orientation="h", y=-0.2))
+        fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul) | 总车次")
+        fig_trans.update_layout(barmode='stack', height=480, legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig_trans, use_container_width=True)
 
     with col_t2:
-        fig_bl = go.Figure()
-        fig_bl.add_trace(go.Bar(x=df['Ngày'], y=df['Backlog'], marker_color='#f59e0b', text=[format_vietnam(x) if x>0 else "" for x in df['Backlog']], textposition='outside'))
-        fig_bl = clean_layout(fig_bl, "Backlog tồn đọng")
-        fig_bl.update_layout(height=450)
-        st.plotly_chart(fig_bl, use_container_width=True)
+        fig_cot = go.Figure()
+        fig_cot.add_trace(go.Bar(x=df['Ngày'], y=df['COT Total'], name="Tổng đơn", marker_color='#cbd5e1', opacity=0.4))
+        fig_cot.add_trace(go.Scatter(x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", line=dict(color='#10b981', width=4, shape='spline'), mode='lines+markers+text',
+                                     text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], textposition="top center"))
+        fig_cot = clean_layout(fig_cot, "% Sent Volume Ontime | 准时出库率 %")
+        fig_cot.update_layout(height=480, showlegend=False, yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False))
+        st.plotly_chart(fig_cot, use_container_width=True)
 
-    # Dòng 2: CHI TIẾT SỐ CHUYẾN TRỄ
-    st.markdown("<h5 style='color: #475569; margin-top: 20px;'>Chi tiết Xe Xuất Phát Trễ</h5>", unsafe_allow_html=True)
-    col_l1, col_l2 = st.columns(2)
+    # Dòng 2: TRỄ XE & BACKLOG
+    col_l1, col_l2, col_l3 = st.columns([1, 1, 1.2])
     with col_l1:
         fig_sh_late = go.Figure()
         fig_sh_late.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Late'], marker_color='#ef4444', text=[int(x) if x>0 else "" for x in df['Shuttle Late']], textposition='outside'))
-        fig_sh_late = clean_layout(fig_sh_late, "Shuttle Xuất Phát Trễ")
-        fig_sh_late.update_layout(height=350)
+        fig_sh_late = clean_layout(fig_sh_late, "Shuttle Late | 支线延迟")
+        fig_sh_late.update_layout(height=380)
         st.plotly_chart(fig_sh_late, use_container_width=True)
     with col_l2:
         fig_lh_late = go.Figure()
         fig_lh_late.add_trace(go.Bar(x=df['Ngày'], y=df['Linehaul Late'], marker_color='#f43f5e', text=[int(x) if x>0 else "" for x in df['Linehaul Late']], textposition='outside'))
-        fig_lh_late = clean_layout(fig_lh_late, "Linehaul Xuất Phát Trễ")
-        fig_lh_late.update_layout(height=350)
+        fig_lh_late = clean_layout(fig_lh_late, "Linehaul Late | 干线延迟")
+        fig_lh_late.update_layout(height=380)
         st.plotly_chart(fig_lh_late, use_container_width=True)
+    with col_l3:
+        fig_bl = go.Figure()
+        fig_bl.add_trace(go.Bar(x=df['Ngày'], y=df['Backlog'], marker_color='#f59e0b', text=[format_vietnam(x) if x>0 else "" for x in df['Backlog']], textposition='outside'))
+        fig_bl = clean_layout(fig_bl, "Backlog | 积压")
+        fig_bl.update_layout(height=380)
+        st.plotly_chart(fig_bl, use_container_width=True)
 
-    # 5. CHI TIẾT DỮ LIỆU THÔ (ẨN SỐ 0)
-    with st.expander("🔍 Chi tiết dữ liệu thô"):
+    # 5. CHI TIẾT DỮ LIỆU THÔ
+    with st.expander("🔍 Chi tiết dữ liệu thô | 详细数据"):
         df_display = df.copy()
         for col in df_display.columns:
             if col == "Ngày": continue
@@ -303,8 +323,7 @@ def render_dashboard(df, summary, primary_color):
                 try:
                     f_x = float(x)
                     if f_x == 0: return ""
-                    val_str = format_vietnam(f_x) if not is_pct else f"{f_x:.1f}%"
-                    return val_str
+                    return format_vietnam(f_x) if not is_pct else f"{f_x:.1f}%"
                 except: return str(x)
             df_display[col] = df_display[col].apply(lambda x: clean_format(x, "%" in col))
         st.dataframe(df_display.set_index("Ngày").T, use_container_width=True)
