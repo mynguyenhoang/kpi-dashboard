@@ -187,7 +187,7 @@ def get_data():
     
     return data_hcm, data_bn
 
-# 3. GIAO DIỆN
+# 3. GIAO DIỆN HIỂN THỊ CHUNG
 st.markdown("<h2 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>J&T CARGO KPI DASHBOARD</h2>", unsafe_allow_html=True)
 
 data_hcm, data_bn = get_data()
@@ -200,6 +200,7 @@ if df_hcm.empty and df_bn.empty:
 
 tab1, tab2 = st.tabs(["HỒ CHÍ MINH HUB", "BẮC NINH HUB"])
 
+# HÀM ĐỊNH DẠNG SỐ
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
@@ -239,7 +240,7 @@ def render_dashboard(df, summary, primary_color):
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
     
     cw = summary
-    
+
     # 1. METRICS
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Inbound (MTD)", format_vietnam(t_vin))
@@ -248,9 +249,11 @@ def render_dashboard(df, summary, primary_color):
     c4.metric("Trọng lượng (MTD)", format_vietnam(t_tproc_wgt))
     c5.metric("Missort (MTD)", format_vietnam(t_ms))
     c6.metric("Backlog (MTD)", format_vietnam(t_bl))
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # 2. WOW TABLE
-    st.markdown(f"""<table class="kpi-table">
+    html_table = f"""
+    <table class="kpi-table">
         <thead><tr><th>KPI</th><th>Hạng mục</th><th style="width:100px;">WOW</th><th>Tuần này</th><th>Tuần trước</th><th>MTD</th></tr></thead>
         <tbody>
             <tr><td rowspan="2" class="col-pillar" style="color:#0ea5e9;">Sản Lượng</td><td class="col-metric">Inbound (đơn)</td>{get_wow_cell(cw['cw_vin'], cw['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
@@ -259,45 +262,55 @@ def render_dashboard(df, summary, primary_color):
             <tr><td class="col-metric">Backlog (đơn)</td>{get_wow_cell(cw['cw_bl'], cw['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
             <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải</td><td class="col-metric">LH Đúng Giờ (%)</td>{get_wow_cell(cw['cw_lhot'], cw['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
             <tr><td class="col-metric">Shuttle Đúng Giờ (%)</td>{get_wow_cell(cw['cw_shot'], cw['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
-        </tbody></table>""", unsafe_allow_html=True)
+        </tbody></table>"""
+    st.markdown(html_table, unsafe_allow_html=True)
     
     # 3. BIỂU ĐỒ SẢN LƯỢNG & NĂNG SUẤT
     st.markdown(f"<h4 style='color: {primary_color};'>1. Biểu Đồ Sản Lượng & Năng Suất</h4>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         fig_vol = go.Figure()
-        fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', line=dict(color='#0ea5e9')))
+        # Thêm Inbound với label
+        fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Inbound Vol'], name="Inbound", fill='tozeroy', 
+                                     mode='lines+text', text=[format_vietnam(v) if v > 1000 else "" for v in df['Inbound Vol']], textposition="top center",
+                                     line=dict(color='#0ea5e9')))
         fig_vol.add_trace(go.Scatter(x=df['Ngày'], y=df['Outbound Vol'], name="Outbound", line=dict(color='#f59e0b', dash='dot')))
         fig_vol.update_layout(title="Inbound & Outbound hàng ngày", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_vol, use_container_width=True)
     with col2:
         fig_prod = go.Figure()
-        fig_prod.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color=primary_color, opacity=0.7))
+        fig_prod.add_trace(go.Bar(x=df['Ngày'], y=df['Total Process Vol'], marker_color=primary_color, opacity=0.7,
+                                  text=[format_vietnam(v) for v in df['Total Process Vol']], textposition='outside'))
         fig_prod.add_hline(y=df['Total Process Vol'].mean(), line_dash="dash", line_color="red")
-        fig_prod.update_layout(title="Năng suất xử lý (Productivity)", plot_bgcolor='white', margin=dict(t=40, b=10))
+        fig_prod.update_layout(title="Năng suất xử lý (Sản lượng)", plot_bgcolor='white', margin=dict(t=40, b=10))
         st.plotly_chart(fig_prod, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI (TÁCH RIÊNG LH & SHUTTLE)
+    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
     st.markdown(f"<h4 style='color: {primary_color};'>2. Quản lý Vận Tải (LH vs Shuttle) & Hàng Tồn</h4>", unsafe_allow_html=True)
     col3, col4, col5 = st.columns([1, 1, 1])
     
     with col3:
         fig_lh = go.Figure()
-        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'].fillna(0), name="LH Đúng giờ", marker_color='#10b981'))
-        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'].fillna(0), name="LH Trễ", marker_color='#f43f5e'))
-        fig_lh.update_layout(title="Kiểm soát Linehaul (LH)", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
+        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'], name="Đúng giờ", marker_color='#10b981',
+                                text=df['LH Đúng Giờ'], textposition='inside'))
+        fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'], name="Trễ giờ", marker_color='#f43f5e',
+                                text=df['LH Trễ'], textposition='inside'))
+        fig_lh.update_layout(title="Linehaul (LH)", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig_lh, use_container_width=True)
         
     with col4:
         fig_sh = go.Figure()
-        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Đúng Giờ'].fillna(0), name="Shuttle Đúng giờ", marker_color='#10b981'))
-        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'].fillna(0), name="Shuttle Trễ", marker_color='#f43f5e'))
-        fig_sh.update_layout(title="Kiểm soát Shuttle", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
+        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Đúng Giờ'], name="Đúng giờ", marker_color='#10b981',
+                                text=df['Shuttle Đúng Giờ'], textposition='inside'))
+        fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'], name="Trễ giờ", marker_color='#f43f5e',
+                                text=df['Shuttle Trễ'], textposition='inside'))
+        fig_sh.update_layout(title="Shuttle", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig_sh, use_container_width=True)
         
     with col5:
-        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng")
-        fig_bl.update_traces(marker_color='#f59e0b')
+        fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", 
+                        text=df['Backlog'].apply(lambda x: format_vietnam(x) if x > 0 else ""))
+        fig_bl.update_traces(marker_color='#f59e0b', textposition='outside')
         fig_bl.update_layout(plot_bgcolor='white')
         st.plotly_chart(fig_bl, use_container_width=True)
 
