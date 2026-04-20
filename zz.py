@@ -231,11 +231,11 @@ def render_dashboard(df, summary, primary_color):
     col4, col5, col6 = st.columns([1, 1, 1])
     
     with col4:
-        # BIỂU ĐỒ LINEHAUL TRỄ (Dùng dữ liệu LH Trễ)
+        # BIỂU ĐỒ SHUTTLE TRỄ (Dùng dữ liệu LH Trễ)
         fig_lh_tre = go.Figure()
         fig_lh_tre.add_trace(go.Bar(
             x=df['Ngày'], 
-            y=df['LH Trễ'], 
+            y=df['Shuttle Trễ'], 
             name="Trễ", 
             marker_color='#f43f5e', 
             text=df['LH Trễ'].apply(lambda x: f"{x:,.0f}" if (pd.notna(x) and x > 0) else ""), 
@@ -245,11 +245,11 @@ def render_dashboard(df, summary, primary_color):
         st.plotly_chart(fig_lh_tre, use_container_width=True)
 
     with col5:
-        # BIỂU ĐỒ SHUTTLE TRỄ (Dùng dữ liệu Shuttle Trễ)
+        # BIỂU ĐỒ LINEHUAL TRỄ (Dùng dữ liệu Shuttle Trễ)
         fig_sh_tre = go.Figure()
         fig_sh_tre.add_trace(go.Bar(
             x=df['Ngày'], 
-            y=df['Shuttle Trễ'], 
+            y=df['Linehual Trễ'], 
             name="Trễ", 
             marker_color='#f43f5e', 
             text=df['Shuttle Trễ'].apply(lambda x: f"{x:,.0f}" if (pd.notna(x) and x > 0) else ""), 
