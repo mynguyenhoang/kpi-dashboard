@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH (ĐÃ TĂNG SIZE CHỮ VÀ ĐỔI MÀU SÁNG HƠN)
+# 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH (SIZE CHỮ TO, MÀU SÁNG)
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
@@ -185,7 +185,6 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
     return f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: 900; text-align: center; font-size: 17px;'>{wow_str}</td><td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
 
-# TĂNG SIZE CHỮ TOÀN BỘ CHART Ở ĐÂY
 def clean_layout(fig, title):
     fig.update_layout(
         title=dict(text=title, font=dict(size=26, weight='bold', color='#1e3a8a')),
@@ -194,7 +193,7 @@ def clean_layout(fig, title):
         yaxis=dict(showgrid=True, gridcolor='#e2e8f0', tickfont=dict(size=16, color='#1e293b', weight='bold'), zeroline=False),
         hoverlabel=dict(font_size=18)
     )
-    fig.update_traces(cliponaxis=False, textfont_size=16) # Ép size chữ trong các cột/line lên 16
+    fig.update_traces(cliponaxis=False, textfont_size=16)
     return fig
 
 def render_dashboard(df, summary, primary_color):
@@ -285,22 +284,39 @@ def render_dashboard(df, summary, primary_color):
     with col_t2:
         fig_cot = go.Figure()
         
-        # ĐỔI MÀU CỘT XÁM THÀNH XANH NHẠT TƯƠI SÁNG HƠN
+        # Biểu đồ Cột (Ép không cho thu nhỏ chữ, xoay dọc)
         fig_cot.add_trace(go.Bar(
             x=df['Ngày'], 
             y=df['COT Total'], 
             name="Tổng đơn", 
-            marker_color='#bae6fd', # Màu xanh lơ nhạt thay vì xám xịt
+            marker_color='#bae6fd', 
             opacity=0.8,
             text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']],
             textposition='inside',
-            textfont=dict(size=16, color='#0c4a6e', weight='bold') # Chữ xanh đậm, to rõ
+            textangle=-90, # Ép xoay dọc 90 độ
+            insidetextanchor='end', # Neo chữ lùi lên phía trên cùng của cột cho dễ nhìn
+            textfont=dict(size=16, color='#0f172a'), # Chữ màu xanh đen đậm
+            insidetextfont=dict(size=16, color='#0f172a')
         ))
         
-        fig_cot.add_trace(go.Scatter(x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", line=dict(color='#059669', width=5, shape='spline'), mode='lines+markers+text',
-                                     text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], textposition="top center", textfont=dict(size=18, color='#064e3b', weight='bold')))
+        # Biểu đồ Đường
+        fig_cot.add_trace(go.Scatter(
+            x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", 
+            line=dict(color='#059669', width=5, shape='spline'), mode='lines+markers+text',
+            text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], 
+            textposition="top center", 
+            textfont=dict(size=18, color='#064e3b', weight='bold')
+        ))
+        
         fig_cot = clean_layout(fig_cot, "% Sent Volume Ontime | 准时出库率 %")
-        fig_cot.update_layout(height=500, showlegend=False, yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')))
+        
+        # THÊM uniformtext ĐỂ CHỐNG AUTO-SHRINK CỦA PLOTLY
+        fig_cot.update_layout(
+            height=500, 
+            showlegend=False, 
+            yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')),
+            uniformtext=dict(minsize=15, mode='show') # Chìa khóa ở đây: Ép Plotly luôn hiện chữ size 15 trở lên
+        )
         st.plotly_chart(fig_cot, use_container_width=True)
 
     # Dòng 2: TRỄ XE & BACKLOG
