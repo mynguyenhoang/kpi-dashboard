@@ -7,32 +7,39 @@ from plotly.subplots import make_subplots
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG
+# 1. CẤU HÌNH TRANG & CSS CHO BẢNG MỚI
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-# Chỉnh CSS để làm mờ cái ô nền (box) của delta, biến nó thành Text số to rõ ràng
 st.markdown("""
 <style>
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    /* Style cho bảng số liệu tổng hợp y chang file Excel */
+    .kpi-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+        background-color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    div[data-testid="metric-container"] > div > div > div > div:first-child {
-        color: #64748b;
-        font-weight: 600;
+    .kpi-table th {
+        background-color: #1f2937; /* Màu xám đen giống header Excel */
+        color: white;
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #d1d5db;
         font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-weight: bold;
     }
-    /* Biến cái "ô nhỏ xíu" thành text to rõ ràng */
-    div[data-testid="stMetricDelta"] > div {
-        background-color: transparent !important;
-        font-size: 15px !important;
-        font-weight: 600 !important;
+    .kpi-table td {
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        font-size: 14px;
+        vertical-align: middle;
     }
+    .col-pillar { font-weight: bold; text-align: center; background-color: #f8fafc; }
+    .col-metric { font-weight: 600; color: #1e293b; }
+    .col-num { text-align: right; font-family: monospace; font-size: 15px; }
+    .col-mtd { text-align: right; font-family: monospace; font-size: 15px; font-weight: bold; background-color: #f0fdf4; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -171,6 +178,43 @@ def format_vietnam(number):
     if pd.isna(number): return "0"
     return f"{number:,.0f}".replace(",", ".")
 
+def get_wow_cell(cur, prev, is_pct=False):
+    """Hàm tạo mã HTML cho 3 cột: WoW, Kỳ Này, Kỳ Trước y chang Excel"""
+    if prev is None or pd.isna(prev) or (prev == 0 and not is_pct):
+        cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
+        return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
+
+    if is_pct:
+        diff = cur - prev
+        pct = diff
+    else:
+        diff = cur - prev
+        pct = (diff / prev) * 100 if prev > 0 else 0
+
+    # Logic màu chuẩn Trung Quốc (Red = Tăng, Green = Giảm)
+    if diff > 0:
+        bg_color = "#fecaca" # Nền đỏ nhạt
+        text_color = "#dc2626" # Chữ đỏ đậm
+        sign = "+"
+    elif diff < 0:
+        bg_color = "#bbf7d0" # Nền xanh nhạt
+        text_color = "#16a34a" # Chữ xanh đậm
+        sign = ""
+    else:
+        bg_color = "transparent"
+        text_color = "#333"
+        sign = ""
+        
+    wow_str = f"{sign}{pct:.0f}%" if not is_pct else f"{sign}{diff:.1f}%"
+    cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
+    prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
+
+    wow_td = f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center;'>{wow_str}</td>"
+    cur_td = f"<td class='col-num'>{cur_str}</td>"
+    prev_td = f"<td class='col-num'>{prev_str}</td>"
+
+    return wow_td + cur_td + prev_td
+
 def render_dashboard(df, primary_color):
     if df.empty:
         st.info("Chưa có dữ liệu cho Hub này.")
@@ -185,11 +229,11 @@ def render_dashboard(df, primary_color):
     total_xe_dung = df['Xe Đúng COT (Tổng)'].sum(skipna=True)
     total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
-    final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
-    # TÍNH WOW VÀ HIỂN THỊ CON SỐ CHÊNH LỆCH RÕ RÀNG
+    # TÍNH DATA 2 KỲ (Tuần này / Tuần trước)
     valid_df = df.dropna(subset=['Tổng lượng hàng'])
-    delta_vol = delta_wgt = delta_ms = delta_bl = delta_ot = None 
+    cw_vol = cw_wgt = cw_ms = cw_bl = cw_ot = 0
+    pw_vol = pw_wgt = pw_ms = pw_bl = pw_ot = None
     
     n_days = len(valid_df)
     if n_days >= 4:
@@ -197,38 +241,65 @@ def render_dashboard(df, primary_color):
         cw = valid_df.iloc[-period:]
         pw = valid_df.iloc[-(2*period):-period]
         
-        def calc_wow_with_number(cur, prev, unit=""):
-            diff = cur - prev
-            pct = (abs(diff) / prev * 100) if prev > 0 else 0.0
-            sign = "+" if diff > 0 else "" if diff == 0 else "-"
-            # Hiển thị số chênh lệch thực tế + tỷ lệ %
-            return f"{sign} {format_vietnam(abs(diff))} {unit} ({pct:.1f}%)"
-
-        delta_vol = calc_wow_with_number(cw['Tổng lượng hàng'].sum(), pw['Tổng lượng hàng'].sum())
-        delta_wgt = calc_wow_with_number(cw['Tổng trọng lượng (Kg)'].sum(), pw['Tổng trọng lượng (Kg)'].sum(), "kg")
-        delta_ms = calc_wow_with_number(cw['Số đơn Missort'].sum(), pw['Số đơn Missort'].sum())
-        delta_bl = calc_wow_with_number(cw['Backlog tồn đọng'].sum(), pw['Backlog tồn đọng'].sum())
+        cw_vol, pw_vol = cw['Tổng lượng hàng'].sum(), pw['Tổng lượng hàng'].sum()
+        cw_wgt, pw_wgt = cw['Tổng trọng lượng (Kg)'].sum(), pw['Tổng trọng lượng (Kg)'].sum()
+        cw_ms, pw_ms = cw['Số đơn Missort'].sum(), pw['Số đơn Missort'].sum()
+        cw_bl, pw_bl = cw['Backlog tồn đọng'].sum(), pw['Backlog tồn đọng'].sum()
         
         cw_xe_chay = cw['Xe Đúng COT (Tổng)'].sum() + cw['Xe Sai COT (Tổng)'].sum()
         cw_ot = (cw['Xe Đúng COT (Tổng)'].sum() / cw_xe_chay * 100) if cw_xe_chay > 0 else 0
         pw_xe_chay = pw['Xe Đúng COT (Tổng)'].sum() + pw['Xe Sai COT (Tổng)'].sum()
         pw_ot = (pw['Xe Đúng COT (Tổng)'].sum() / pw_xe_chay * 100) if pw_xe_chay > 0 else 0
-        diff_ot = cw_ot - pw_ot
-        delta_ot = f"{'+ ' if diff_ot > 0 else '- ' if diff_ot < 0 else ''}{abs(diff_ot):.2f}%"
 
-    # HIỂN THỊ METRICS LÊN GIAO DIỆN
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Tổng Sản Lượng", format_vietnam(total_vol), delta=delta_vol)
-    c2.metric("Tổng Trọng Lượng", format_vietnam(total_weight) + " kg", delta=delta_wgt)
-    # Dùng delta_color="inverse" để tự động đổi màu: Lỗi giảm thì màu xanh, Lỗi tăng thì màu đỏ
-    c3.metric(f"Tổng Missort ({final_missort_rate:.2f}%)", format_vietnam(total_missort), delta=delta_ms, delta_color="inverse")
-    c4.metric("Tổng Backlog", format_vietnam(total_backlog), delta=delta_bl, delta_color="inverse")
-    c5.metric("Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%", delta=delta_ot)
+    # HIỂN THỊ BẢNG TỔNG HỢP (THAY THẾ HOÀN TOÀN ST.METRIC BẰNG BẢNG HTML)
+    html_table = f"""
+    <table class="kpi-table">
+        <thead>
+            <tr>
+                <th>Pillar (Nhóm)</th>
+                <th>Metrics (Chỉ tiêu)</th>
+                <th style="width: 100px;">WoW</th>
+                <th>Kỳ Này (Current)</th>
+                <th>Kỳ Trước (Previous)</th>
+                <th>Tổng Tháng (MTD)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td rowspan="2" class="col-pillar" style="color: #0ea5e9;">Inbound<br>(Sản Lượng)</td>
+                <td class="col-metric">Tổng Sản Lượng (đơn)</td>
+                {get_wow_cell(cw_vol, pw_vol)}
+                <td class="col-mtd">{format_vietnam(total_vol)}</td>
+            </tr>
+            <tr>
+                <td class="col-metric">Tổng Trọng Lượng (kg)</td>
+                {get_wow_cell(cw_wgt, pw_wgt)}
+                <td class="col-mtd">{format_vietnam(total_weight)}</td>
+            </tr>
+            <tr>
+                <td rowspan="2" class="col-pillar" style="color: #ef4444;">Quality<br>(Chất Lượng)</td>
+                <td class="col-metric">Tổng Missort (đơn)</td>
+                {get_wow_cell(cw_ms, pw_ms)}
+                <td class="col-mtd">{format_vietnam(total_missort)}</td>
+            </tr>
+            <tr>
+                <td class="col-metric">Backlog Tồn Đọng (đơn)</td>
+                {get_wow_cell(cw_bl, pw_bl)}
+                <td class="col-mtd">{format_vietnam(total_backlog)}</td>
+            </tr>
+            <tr>
+                <td class="col-pillar" style="color: #10b981;">Linehaul<br>(Vận Tải)</td>
+                <td class="col-metric">Tỷ Lệ Đúng Giờ (%)</td>
+                {get_wow_cell(cw_ot, pw_ot, is_pct=True)}
+                <td class="col-mtd">{final_ontime_rate:.2f}%</td>
+            </tr>
+        </tbody>
+    </table>
+    """
+    st.markdown(html_table, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # KHU VỰC VẼ BIỂU ĐỒ
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Đánh giá Sản Lượng & Chất Lượng Phân Loại (Missort)</h4>", unsafe_allow_html=True)
+    # KHU VỰC VẼ BIỂU ĐỒ (Giữ nguyên)
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Chất Lượng Phân Loại</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
     with col_chart1:
@@ -271,7 +342,7 @@ def render_dashboard(df, primary_color):
         fig_bl.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    # Đưa hẳn bảng số liệu thô ra ngoài, hiển thị full số luôn, bỏ cái "ô nhỏ xíu" Bấm để xem!
+    # Đưa hẳn bảng số liệu thô ra ngoài
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô</h4>", unsafe_allow_html=True)
     df_show = df.copy()
     for col in df_show.columns:
