@@ -295,13 +295,13 @@ def render_dashboard(df, summary, primary_color):
         fig_lh = go.Figure()
         fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ'], name="Đúng", marker_color='#10b981', text=df['LH Đúng Giờ'], textposition='inside'))
         fig_lh.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ'], name="Trễ", marker_color='#f43f5e', text=df['LH Trễ'], textposition='inside'))
-        fig_lh.update_layout(title="Linehaul (LH)", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
+        fig_lh.update_layout(title="Tổng chuyến xe", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig_lh, use_container_width=True)
     with col5:
         fig_sh = go.Figure()
         fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Đúng Giờ'], name="Đúng", marker_color='#10b981', text=df['Shuttle Đúng Giờ'], textposition='inside'))
         fig_sh.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Trễ'], name="Trễ", marker_color='#f43f5e', text=df['Shuttle Trễ'], textposition='inside'))
-        fig_sh.update_layout(title="Shuttle", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
+        fig_sh.update_layout(title="Số chuyến xe trễ của Linehaul", barmode='stack', plot_bgcolor='white', legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig_sh, use_container_width=True)
     with col6:
         fig_bl = px.bar(df, x="Ngày", y="Backlog", title="Backlog tồn đọng", text=df['Backlog'].apply(lambda x: format_vietnam(x) if x > 0 else ""))
