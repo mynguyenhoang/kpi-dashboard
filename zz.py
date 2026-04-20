@@ -54,17 +54,13 @@ def get_data():
         if not vals or len(vals) < 55:
             return pd.DataFrame(), pd.DataFrame()
 
-        # BỘ LỌC DỮ LIỆU "DIỆT" LỖI SAI SỐ
         def clean_val(row_idx, col_idx):
             try:
                 if row_idx < len(vals) and col_idx < len(vals[row_idx]):
                     v = vals[row_idx][col_idx]
                     str_v = str(v).strip()
-                    # Loại bỏ ô trống hoặc chứa công thức lỗi
                     if v is None or str_v == "" or "#" in str_v or "IF(" in str_v or "=" in str_v: 
                         return np.nan
-                    
-                    # Chuẩn hóa dấu phẩy, phần trăm
                     s = str_v.replace('%', '').replace(',', '').strip()
                     if s == '-': return 0.0
                     return float(s)
@@ -72,10 +68,8 @@ def get_data():
             except:
                 return np.nan
 
-        # TÌM CỘT NGÀY THÁNG (Index 3)
         date_row_idx = 3 
         start_col_idx = -1
-        
         for c in range(2, len(vals[date_row_idx])):
             val = str(vals[date_row_idx][c]).strip()
             if val == "1":
@@ -106,19 +100,14 @@ def get_data():
             data["Backlog tồn đọng"] = [clean_val(bl_idx, c) for c in cols_to_scan]
             data["Tỷ lệ Linehaul đúng giờ (%)"] = [clean_val(lh_rt_idx, c) for c in cols_to_scan]
 
-            # XỬ LÝ CHUẨN XÁC SỐ XE ĐÚNG/SAI
             xe_sai_list = []
             xe_dung_list = []
-            
             for c in cols_to_scan:
-                # Lấy tổng chuyến
                 chuyen_vals = [clean_val(r, c) for r in chuyen_idxs]
                 tre_vals = [clean_val(r, c) for r in tre_idxs]
-                
                 sum_chuyen = sum([x for x in chuyen_vals if pd.notna(x)])
                 sum_tre = sum([x for x in tre_vals if pd.notna(x)])
                 
-                # Nếu tổng chuyến = 0 (ngày nghỉ hoặc chưa có dữ liệu) thì cho thành NaN để ẩn trên chart
                 if sum_chuyen == 0 and all(pd.isna(x) for x in chuyen_vals):
                     xe_sai_list.append(np.nan)
                     xe_dung_list.append(np.nan)
@@ -131,18 +120,8 @@ def get_data():
 
             return pd.DataFrame(data)
 
-        # 1. HCM HUB
-        df_hcm = extract_hub_data(
-            vol_idx=8, wgt_idx=9, ms_idx=17, ms_rt_idx=18, fte_idx=23, bl_idx=31, 
-            chuyen_idxs=[38, 39], tre_idxs=[40, 41], lh_rt_idx=43
-        )
-
-        # 2. BN HUB
-        df_bn = extract_hub_data(
-            vol_idx=14, wgt_idx=15, ms_idx=19, ms_rt_idx=20, fte_idx=26, bl_idx=32, 
-            chuyen_idxs=[47, 48], tre_idxs=[49, 50], lh_rt_idx=52
-        )
-        
+        df_hcm = extract_hub_data(8, 9, 17, 18, 23, 31, [38, 39], [40, 41], 43)
+        df_bn = extract_hub_data(14, 15, 19, 20, 26, 32, [47, 48], [49, 50], 52)
         return df_hcm, df_bn
         
     except Exception as e:
@@ -150,7 +129,7 @@ def get_data():
         return pd.DataFrame(), pd.DataFrame()
 
 # 3. GIAO DIỆN HIỂN THỊ CHUNG
-st.markdown("<h1 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 30px;'>📊 J&T CARGO KPI DASHBOARD</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; font-weight: 800; color: #0f172a; margin-bottom: 10px;'>📊 J&T CARGO KPI DASHBOARD</h1>", unsafe_allow_html=True)
 df_hcm, df_bn = get_data()
 
 if df_hcm.empty and df_bn.empty:
@@ -160,36 +139,86 @@ if df_hcm.empty and df_bn.empty:
 tab1, tab2 = st.tabs(["🏢 HỒ CHÍ MINH HUB", "🏢 BẮC NINH HUB"])
 
 def format_vietnam(number):
-    """Hàm định dạng số kiểu Việt Nam: 1.000.000 thay vì 1,000,000"""
     if pd.isna(number): return "0"
     return f"{number:,.0f}".replace(",", ".")
+
+def calc_delta(current, previous):
+    """Tính % thay đổi giữa 2 kỳ"""
+    if previous == 0 or pd.isna(previous):
+        return 100.0 if current > 0 else 0.0
+    return ((current - previous) / previous) * 100
 
 def render_dashboard(df, primary_color):
     if df.empty:
         st.info("Chưa có dữ liệu cho Hub này.")
         return
 
-    # TÍNH TỔNG (Loại bỏ NaN an toàn)
-    total_vol = df['Tổng lượng hàng'].sum(skipna=True) 
-    total_weight = df['Tổng trọng lượng (Kg)'].sum(skipna=True)
-    total_missort = df['Số đơn Missort'].sum(skipna=True)
-    total_backlog = df['Backlog tồn đọng'].sum(skipna=True)
+    # --- LOGIC MỚI: TÁCH DỮ LIỆU ĐỂ SO SÁNH (7 NGÀY GẦN NHẤT vs 7 NGÀY TRƯỚC ĐÓ) ---
+    # Lấy các ngày thực sự có dữ liệu (Bỏ qua các ngày trong tương lai bị NaN)
+    valid_df = df.dropna(subset=['Tổng lượng hàng']).copy()
+    
+    if len(valid_df) >= 14:
+        current_period = valid_df.iloc[-7:]   # 7 ngày gần nhất
+        prev_period = valid_df.iloc[-14:-7]   # 7 ngày trước đó
+        label_period = "7 ngày qua"
+    else:
+        # Nếu chưa đủ 14 ngày, lấy nửa sau so với nửa trước
+        mid = len(valid_df) // 2
+        current_period = valid_df.iloc[mid:]
+        prev_period = valid_df.iloc[:mid]
+        label_period = "Kỳ này"
 
-    # Tỷ lệ tổng
-    total_xe_dung = df['Xe Đúng COT (Tổng)'].sum(skipna=True)
-    total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
-    final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
-    final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
+    # Tính toán tổng cho kỳ hiện tại
+    cur_vol = current_period['Tổng lượng hàng'].sum()
+    cur_weight = current_period['Tổng trọng lượng (Kg)'].sum()
+    cur_missort = current_period['Số đơn Missort'].sum()
+    cur_backlog = current_period['Backlog tồn đọng'].sum()
+    
+    cur_xe_dung = current_period['Xe Đúng COT (Tổng)'].sum()
+    cur_xe_tong = cur_xe_dung + current_period['Xe Sai COT (Tổng)'].sum()
+    cur_ontime_rate = (cur_xe_dung / cur_xe_tong * 100) if cur_xe_tong > 0 else 0
 
+    # Tính toán delta (Sự chênh lệch)
+    delta_vol = calc_delta(cur_vol, prev_period['Tổng lượng hàng'].sum())
+    delta_weight = calc_delta(cur_weight, prev_period['Tổng trọng lượng (Kg)'].sum())
+    delta_missort = calc_delta(cur_missort, prev_period['Số đơn Missort'].sum())
+    delta_backlog = calc_delta(cur_backlog, prev_period['Backlog tồn đọng'].sum())
+
+    prev_xe_dung = prev_period['Xe Đúng COT (Tổng)'].sum()
+    prev_xe_tong = prev_xe_dung + prev_period['Xe Sai COT (Tổng)'].sum()
+    prev_ontime_rate = (prev_xe_dung / prev_xe_tong * 100) if prev_xe_tong > 0 else 0
+    delta_ontime = cur_ontime_rate - prev_ontime_rate
+
+    # --- RENDER METRICS VỚI DELTA ---
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("📦 Tổng Sản Lượng", format_vietnam(total_vol))
-    c2.metric("⚖️ Tổng Trọng Lượng", format_vietnam(total_weight) + " kg")
-    c3.metric("❌ Tổng Missort", format_vietnam(total_missort), f"{final_missort_rate:.2f}% tỷ lệ")
-    c4.metric("📦 Tổng Backlog", format_vietnam(total_backlog))
-    c5.metric("🚚 Tỷ Lệ LH Đúng Giờ", f"{final_ontime_rate:.2f}%")
+    # Lượng hàng tăng là Tốt (normal), giảm là Xấu
+    c1.metric(f"📦 Sản Lượng ({label_period})", format_vietnam(cur_vol), f"{delta_vol:.1f}%", delta_color="normal")
+    c2.metric("⚖️ Trọng Lượng", format_vietnam(cur_weight) + " kg", f"{delta_weight:.1f}%", delta_color="normal")
+    
+    # Lỗi (Missort) & Tồn (Backlog) Tăng là Xấu (inverse), Giảm là Tốt
+    c3.metric("❌ Tổng Missort", format_vietnam(cur_missort), f"{delta_missort:.1f}%", delta_color="inverse")
+    c4.metric("📦 Tổng Backlog", format_vietnam(cur_backlog), f"{delta_backlog:.1f}%", delta_color="inverse")
+    
+    # Đúng giờ tăng là Tốt (normal)
+    c5.metric("🚚 Tỷ Lệ Đúng Giờ", f"{cur_ontime_rate:.1f}%", f"{delta_ontime:.1f}%", delta_color="normal")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- HỆ THỐNG CẢNH BÁO TỰ ĐỘNG (AUTO ALERTS) ---
+    recent_3_days = valid_df.iloc[-3:]
+    alerts = []
+    for index, row in recent_3_days.iterrows():
+        if pd.notna(row['Backlog tồn đọng']) and row['Backlog tồn đọng'] > 100: # Threshold tồn đọng > 100
+            alerts.append(f"⚠️ **{row['Ngày']}**: Phát hiện tồn đọng (Backlog) cao bất thường ({format_vietnam(row['Backlog tồn đọng'])} đơn).")
+        if pd.notna(row['Số đơn Missort']) and row['Số đơn Missort'] > 50: # Threshold lỗi > 50
+            alerts.append(f"🚨 **{row['Ngày']}**: Cảnh báo số đơn Missort tăng đột biến ({format_vietnam(row['Số đơn Missort'])} đơn).")
+    
+    if alerts:
+        with st.expander("🔴 HỆ THỐNG CẢNH BÁO VẬN HÀNH NGẮN HẠN (Mở để xem chi tiết)", expanded=True):
+            for alert in alerts:
+                st.error(alert)
+
+    # --- KHU VỰC BIỂU ĐỒ (Giữ nguyên logic vẽ cũ, sửa layout) ---
     st.markdown(f"<h4 style='color: {primary_color};'>1. Đánh giá Sản Lượng & Chất Lượng Phân Loại (Missort)</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
@@ -234,7 +263,6 @@ def render_dashboard(df, primary_color):
         st.plotly_chart(fig_bl, use_container_width=True)
 
     with st.expander("🔍 Bảng đối soát dữ liệu thô (Bấm để xem)"):
-        # Format lại bảng thô cho dễ nhìn
         df_show = df.copy()
         for col in df_show.columns:
             if col != "Ngày":
