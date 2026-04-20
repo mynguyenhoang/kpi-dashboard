@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH (NÂNG CẤP GIAO DIỆN)
+# 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
     /* Bảng WOW */
@@ -82,7 +82,7 @@ st.markdown("""<style>
     }
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN 100% LOGIC)
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -190,6 +190,10 @@ def get_data():
         weekly_summary = {
             "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_win": clean_val(win_idx, cw_idx) if cw_idx != -1 else 0, "pw_win": clean_val(win_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_wout": clean_val(wout_idx, cw_idx) if wout_idx != -1 else 0, "pw_wout": clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_tproc_vol": clean_val(tproc_vol_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_vol": clean_val(tproc_vol_idx, pw_idx) if pw_idx != -1 else 0,
+            "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
             "cw_lhot": get_ot_rate(lhc_idx, lht_idx, cw_idx), "pw_lhot": get_ot_rate(lhc_idx, lht_idx, pw_idx),
@@ -236,7 +240,6 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
     return f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: bold; text-align: center; font-size: 15px;'>{wow_str}</td><td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
 
-# Hàm làm sạch layout biểu đồ chung
 def clean_layout(fig, title):
     fig.update_layout(
         title=dict(text=title, font=dict(size=22, weight='bold', color='#1e293b')),
@@ -264,14 +267,14 @@ def render_dashboard(df, summary, primary_color):
     lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
 
-    # 1. METRICS
+    # 1. METRICS (ĐÃ BỎ ICON)
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("📦 Inbound (MTD)", format_vietnam(t_vin))
-    c2.metric("📤 Outbound (MTD)", format_vietnam(t_vout))
-    c3.metric("⚙️ Xử lý (MTD)", format_vietnam(t_tproc_vol))
-    c4.metric("⚖️ Trọng lượng (Kg)", format_vietnam(t_tproc_wgt))
-    c5.metric("❌ Missort (MTD)", format_vietnam(t_ms))
-    c6.metric("⚠️ Backlog (MTD)", format_vietnam(t_bl))
+    c1.metric("Inbound (MTD)", format_vietnam(t_vin))
+    c2.metric("Outbound (MTD)", format_vietnam(t_vout))
+    c3.metric("Xử lý (MTD)", format_vietnam(t_tproc_vol))
+    c4.metric("Trọng lượng (Kg)", format_vietnam(t_tproc_wgt))
+    c5.metric("Missort (MTD)", format_vietnam(t_ms))
+    c6.metric("Backlog (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 2. WOW TABLE
@@ -316,32 +319,40 @@ def render_dashboard(df, summary, primary_color):
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất (Trọng lượng kg)")
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN
+    # 4. BIỂU ĐỒ VẬN TẢI & HÀNG TỒN (ĐÃ TỐI ƯU GIAO DIỆN)
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 800; margin-top: 40px; border-bottom: 2px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & Hàng Tồn</h3>", unsafe_allow_html=True)
     
     col_t1, col_t2 = st.columns([2, 1])
     with col_t1:
         fig_trans = go.Figure()
-        # Chữ số BÊN TRONG cột (size 15, in đậm)
+        
+        # Cột Shuttle (Màu xanh, text tự động căn chỉnh để không bị khuất)
         fig_trans.add_trace(go.Bar(
             x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Chuyến']], 
-            textposition='inside', textfont=dict(size=15, color='white')
+            textposition='auto', textfont=dict(size=14, color='white')
         ))
+        
+        # Cột Linehaul (ĐỔI SANG MÀU CAM cho dễ nhìn)
         fig_trans.add_trace(go.Bar(
-            x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#10b981', 
+            x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', 
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Chuyến']], 
-            textposition='inside', textfont=dict(size=15, color='white')
+            textposition='auto', textfont=dict(size=14, color='white')
         ))
-        # Chữ số TỔNG TRÊN ĐẦU cột (size 17, in đậm, màu đen)
+        
+        # TỔNG TRÊN ĐẦU: Sử dụng Scatter text để không bị cộng dồn trục Y gấp đôi
         df_total = df['Shuttle Chuyến'].fillna(0) + df['Linehaul Chuyến'].fillna(0)
-        fig_trans.add_trace(go.Bar(
-            x=df['Ngày'], y=df_total, name="Tổng", marker_color='rgba(0,0,0,0)', hoverinfo='none', showlegend=False,
+        fig_trans.add_trace(go.Scatter(
+            x=df['Ngày'], y=df_total, name="Tổng", mode='text',
             text=[f"<b>{int(x)}</b>" if x > 0 else "" for x in df_total], 
-            textposition='outside', textfont=dict(size=17, color='#0f172a')
+            textposition='top center', textfont=dict(size=16, color='#0f172a'),
+            showlegend=False, hoverinfo='none'
         ))
+        
         fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul)")
-        fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=15)), height=450)
+        # Tăng max trục Y lên 15% để số tổng ở trên cùng không bị cắt mất
+        max_y = df_total.max() * 1.15 if df_total.max() > 0 else 10
+        fig_trans.update_layout(barmode='stack', legend=dict(orientation="h", y=-0.15, font=dict(size=15)), height=450, yaxis=dict(range=[0, max_y]))
         st.plotly_chart(fig_trans, use_container_width=True)
 
     with col_t2:
@@ -356,7 +367,9 @@ def render_dashboard(df, summary, primary_color):
         st.plotly_chart(fig_bl, use_container_width=True)
 
     # Dòng 2: CHI TIẾT SỐ CHUYẾN TRỄ
+    st.markdown("<h5 style='color: #475569; margin-top: 20px;'>Chi tiết Xe Xuất Phát Trễ</h5>", unsafe_allow_html=True)
     col_l1, col_l2 = st.columns(2)
+    
     with col_l1:
         fig_sh_late = go.Figure()
         fig_sh_late.add_trace(go.Bar(
@@ -364,8 +377,9 @@ def render_dashboard(df, summary, primary_color):
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Shuttle Late']],
             textposition='outside', textfont=dict(size=16, color='#b91c1c')
         ))
-        fig_sh_late = clean_layout(fig_sh_late, "🚨 Shuttle Xuất Phát Trễ")
-        fig_sh_late.update_layout(height=350)
+        fig_sh_late = clean_layout(fig_sh_late, "Shuttle Xuất Phát Trễ")
+        max_y_sh = df['Shuttle Late'].max() * 1.2 if df['Shuttle Late'].max() > 0 else 5
+        fig_sh_late.update_layout(height=350, yaxis=dict(range=[0, max_y_sh]))
         st.plotly_chart(fig_sh_late, use_container_width=True)
 
     with col_l2:
@@ -375,14 +389,15 @@ def render_dashboard(df, summary, primary_color):
             text=[f"<b>{int(x)}</b>" if pd.notna(x) and x > 0 else "" for x in df['Linehaul Late']],
             textposition='outside', textfont=dict(size=16, color='#be123c')
         ))
-        fig_lh_late = clean_layout(fig_lh_late, "🚨 Linehaul Xuất Phát Trễ")
-        fig_lh_late.update_layout(height=350)
+        fig_lh_late = clean_layout(fig_lh_late, "Linehaul Xuất Phát Trễ")
+        max_y_lh = df['Linehaul Late'].max() * 1.2 if df['Linehaul Late'].max() > 0 else 5
+        fig_lh_late.update_layout(height=350, yaxis=dict(range=[0, max_y_lh]))
         st.plotly_chart(fig_lh_late, use_container_width=True)
 
     with st.expander("🔍 Chi tiết dữ liệu thô"):
         st.dataframe(df.set_index("Ngày").T, use_container_width=True)
 
 with tab1:
-    render_dashboard(df_hcm, sum_hcm, "#0284c7") # Xanh lam đậm
+    render_dashboard(df_hcm, sum_hcm, "#0284c7") 
 with tab2:
-    render_dashboard(df_bn, sum_bn, "#059669")  # Xanh ngọc
+    render_dashboard(df_bn, sum_bn, "#059669")
