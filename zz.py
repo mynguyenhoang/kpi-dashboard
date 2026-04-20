@@ -139,17 +139,17 @@ def get_data():
 
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
-    # HÀM LẤY DATA ĐÃ NÂNG CẤP (Thêm Outbound, tách LH và Shuttle)
-    def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, ms_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
+    # HÀM LẤY DATA (Đã fix lỗi thiếu cột Tỷ lệ Missort)
+    def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
         data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
         data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
         data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
+        data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] # ĐÂY RỒI, THỦ PHẠM GÂY LỖI ĐÃ ĐƯỢC THÊM LẠI!
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
 
-        # Lấy chuyến Linehaul
         lh_c_list, lh_t_list = [], []
         sh_c_list, sh_t_list = [], []
         
@@ -169,7 +169,6 @@ def get_data():
         data["Shuttle Đúng Giờ"] = [c - t for c, t in zip(sh_c_list, sh_t_list)]
         data["Shuttle Trễ"] = sh_t_list
 
-        # LẤY SỐ LIỆU TUẦN
         valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
         
         cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
@@ -196,12 +195,11 @@ def get_data():
 
         return pd.DataFrame(data), weekly_summary
 
-    # CHÚ Ý: ĐÂY LÀ CHỖ MAP INDEX VỚI FILE FEISHU
-    # HCM: Vin=4, Vout=5, Win=6, Wout=7. Missort=17, Backlog=31. LH(Chuyen=38, Tre=40). Shuttle(Chuyen=39, Tre=41)
-    data_hcm = extract_hub_data(4, 5, 6, 7, 17, 31, 38, 40, 39, 41)
+    # HCM: Thêm index 18 (Tỷ lệ Missort)
+    data_hcm = extract_hub_data(4, 5, 6, 7, 17, 18, 31, 38, 40, 39, 41)
     
-    # BN: Vin=10, Vout=11, Win=12, Wout=13. Missort=19, Backlog=32. LH(Chuyen=47, Tre=49). Shuttle(Chuyen=48, Tre=50)
-    data_bn = extract_hub_data(10, 11, 12, 13, 19, 32, 47, 49, 48, 50)
+    # BN: Thêm index 20 (Tỷ lệ Missort)
+    data_bn = extract_hub_data(10, 11, 12, 13, 19, 20, 32, 47, 49, 48, 50)
     
     return data_hcm, data_bn
 
@@ -249,7 +247,6 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
 
-    # TÍNH TỔNG (MTD)
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
     t_win = df['Inbound Wgt'].sum(skipna=True) 
@@ -337,7 +334,7 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
 
-    # 3. BIỂU ĐỒ SẢN LƯỢNG (INBOUND + OUTBOUND) & MISSORT
+    # 3. BIỂU ĐỒ SẢN LƯỢNG & MISSORT
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Missort | 生产与分拣图表</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
@@ -361,12 +358,11 @@ def render_dashboard(df, summary, primary_color):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI (LH & SHUTTLE) & BACKLOG
+    # 4. BIỂU ĐỒ VẬN TẢI & BACKLOG
     st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>2. Quản lý Vận Tải & Hàng Tồn | 运输与积压监控</h4>", unsafe_allow_html=True)
     col_chart3, col_chart4 = st.columns(2)
 
     with col_chart3:
-        # Cập nhật biểu đồ OT để hiển thị tổng LH và Shuttle
         fig_xe = go.Figure()
         fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Đúng Giờ']+df['Shuttle Đúng Giờ'], name="Đúng giờ COT", marker_color='#10b981'))
         fig_xe.add_trace(go.Bar(x=df['Ngày'], y=df['LH Trễ']+df['Shuttle Trễ'], name="Trễ giờ COT", marker_color='#f43f5e'))
