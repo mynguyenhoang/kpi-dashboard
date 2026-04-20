@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 import requests
 import time
 
-# 1. CẤU HÌNH TRANG & CSS CHO BẢNG
+# 1. CẤU HÌNH TRANG & CSS
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -109,10 +109,8 @@ def get_data():
         except:
             return np.nan
 
-    # ÉP CỨNG CÁC CỘT CHỨA SỐ LIỆU TUẦN (Cột D, E, F, G -> tương ứng index 3, 4, 5, 6)
-    weekly_col_idxs = [3, 4, 5, 6] 
+    weekly_col_idxs = [3, 4, 5, 6] # Cột D, E, F, G (W15, W16, W17, W18)
 
-    # TÌM CỘT NGÀY THÁNG BẮT ĐẦU
     date_row_idx = 3 
     start_col_idx = -1
     for c in range(2, len(vals[date_row_idx])):
@@ -135,7 +133,7 @@ def get_data():
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
     def extract_hub_data(vol_idx, wgt_idx, ms_idx, ms_rt_idx, fte_idx, bl_idx, chuyen_idxs, tre_idxs, lh_rt_idx):
-        # 1. LẤY DỮ LIỆU NGÀY VẼ BIỂU ĐỒ
+        # 1. LẤY DỮ LIỆU NGÀY
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Tổng lượng hàng"] = [clean_val(vol_idx, c) for c in cols_to_scan]
         data["Tổng trọng lượng (Kg)"] = [clean_val(wgt_idx, c) for c in cols_to_scan]
@@ -163,20 +161,23 @@ def get_data():
         data["Xe Sai COT (Tổng)"] = xe_sai_list
         data["Xe Đúng COT (Tổng)"] = xe_dung_list
 
-        # 2. LẤY TRỰC TIẾP DỮ LIỆU TUẦN TỪ CÁC CỘT W (Không cộng dồn ngày nữa)
-        cw_idx = -1
-        # Tìm cột W hiện tại (Cột W cuối cùng có dữ liệu lớn hơn 0)
-        for idx in reversed(weekly_col_idxs):
+        # 2. LOGIC TÌM 2 TUẦN GẦN NHẤT CÓ SỐ LIỆU
+        valid_weeks = []
+        for idx in weekly_col_idxs:
             val = clean_val(vol_idx, idx)
             if pd.notna(val) and val > 0:
-                cw_idx = idx
-                break
+                valid_weeks.append(idx)
         
-        pw_idx = -1
-        if cw_idx != -1:
-            idx_pos = weekly_col_idxs.index(cw_idx)
-            if idx_pos > 0:
-                pw_idx = weekly_col_idxs[idx_pos - 1] # Cột W liền kề trước đó
+        # Nếu có từ 2 tuần trở lên, lấy 2 tuần cuối cùng có số
+        if len(valid_weeks) >= 2:
+            cw_idx = valid_weeks[-1]  # Tuần này
+            pw_idx = valid_weeks[-2]  # Tuần trước
+        elif len(valid_weeks) == 1:
+            cw_idx = valid_weeks[0]
+            pw_idx = -1
+        else:
+            cw_idx = -1
+            pw_idx = -1
 
         weekly_summary = {
             "cw_vol": clean_val(vol_idx, cw_idx) if cw_idx != -1 else 0,
@@ -200,18 +201,9 @@ def get_data():
 
         return pd.DataFrame(data), weekly_summary
 
-    # SỬA LẠI INDEX Ở ĐÂY ĐỂ TRỎ VÀO DÒNG "INBOUND" ĐÚNG Ý ÔNG:
-    # 1. HCM HUB (Lấy Inbound: Dòng 5 -> index 4, Trọng lượng: Dòng 7 -> index 6)
-    data_hcm = extract_hub_data(
-        vol_idx=4, wgt_idx=6, ms_idx=17, ms_rt_idx=18, fte_idx=23, bl_idx=31, 
-        chuyen_idxs=[38, 39], tre_idxs=[40, 41], lh_rt_idx=43
-    )
-
-    # 2. BN HUB (Lấy Inbound: Dòng 11 -> index 10, Trọng lượng: Dòng 13 -> index 12)
-    data_bn = extract_hub_data(
-        vol_idx=10, wgt_idx=12, ms_idx=19, ms_rt_idx=20, fte_idx=26, bl_idx=32, 
-        chuyen_idxs=[47, 48], tre_idxs=[49, 50], lh_rt_idx=52
-    )
+    # Lấy đúng dòng Tổng Inbound (Dòng 5 cho HCM, Dòng 11 cho BN)
+    data_hcm = extract_hub_data(vol_idx=4, wgt_idx=6, ms_idx=17, ms_rt_idx=18, fte_idx=23, bl_idx=31, chuyen_idxs=[38, 39], tre_idxs=[40, 41], lh_rt_idx=43)
+    data_bn = extract_hub_data(vol_idx=10, wgt_idx=12, ms_idx=19, ms_rt_idx=20, fte_idx=26, bl_idx=32, chuyen_idxs=[47, 48], tre_idxs=[49, 50], lh_rt_idx=52)
     
     return data_hcm, data_bn
 
@@ -232,23 +224,29 @@ def format_vietnam(number):
     if pd.isna(number): return "0"
     return f"{number:,.0f}".replace(",", ".")
 
-def get_wow_cell(cur, prev, is_pct=False):
-    """Hàm tính % và tạo HTML cho cột WoW (Màu đỏ = Tăng, Xanh = Giảm)"""
+def get_wow_cell(cur, prev, is_pct=False, inverse=False):
+    """
+    Tăng = Xanh, Giảm = Đỏ
+    Nếu inverse=True (dùng cho Missort/Backlog): Tăng = Đỏ, Giảm = Xanh
+    """
     if prev is None or pd.isna(prev) or (prev == 0 and not is_pct):
         cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
         return f"<td style='text-align: center;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
 
-    if is_pct:
-        diff = cur - prev
-        pct = diff
-    else:
-        diff = cur - prev
-        pct = (diff / prev) * 100 if prev > 0 else 0
+    diff = cur - prev
+    pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
 
+    # SET MÀU DỰA THEO LOGIC MỚI CỦA ÔNG
     if diff > 0:
-        bg_color, text_color, sign = "#fecaca", "#dc2626", "+"
+        # Tăng = Xanh lá
+        bg_color, text_color, sign = "#dcfce7", "#15803d", "+"
+        if inverse: # Tăng lỗi = Đỏ
+            bg_color, text_color = "#fee2e2", "#b91c1c"
     elif diff < 0:
-        bg_color, text_color, sign = "#bbf7d0", "#16a34a", ""
+        # Giảm = Đỏ
+        bg_color, text_color, sign = "#fee2e2", "#b91c1c", ""
+        if inverse: # Giảm lỗi = Xanh lá
+            bg_color, text_color = "#dcfce7", "#15803d"
     else:
         bg_color, text_color, sign = "transparent", "#333", ""
         
@@ -269,12 +267,11 @@ def render_dashboard(df, summary, primary_color):
     total_weight = df['Tổng trọng lượng (Kg)'].sum(skipna=True)
     total_missort = df['Số đơn Missort'].sum(skipna=True)
     total_backlog = df['Backlog tồn đọng'].sum(skipna=True)
-
     total_xe_dung = df['Xe Đúng COT (Tổng)'].sum(skipna=True)
     total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
 
-    # LẤY SỐ LIỆU TUẦN ĐÃ LỌC TỪ FEISHU
+    # LẤY SỐ LIỆU TUẦN
     cw_vol, pw_vol = summary.get("cw_vol", 0), summary.get("pw_vol", 0)
     cw_wgt, pw_wgt = summary.get("cw_wgt", 0), summary.get("pw_wgt", 0)
     cw_ms, pw_ms   = summary.get("cw_ms", 0), summary.get("pw_ms", 0)
@@ -309,12 +306,12 @@ def render_dashboard(df, summary, primary_color):
             <tr>
                 <td rowspan="2" class="col-pillar" style="color: #ef4444;">Quality<br>(Chất Lượng)</td>
                 <td class="col-metric">Tổng Missort (đơn)</td>
-                {get_wow_cell(cw_ms, pw_ms)}
+                {get_wow_cell(cw_ms, pw_ms, inverse=True)}
                 <td class="col-mtd">{format_vietnam(total_missort)}</td>
             </tr>
             <tr>
                 <td class="col-metric">Backlog Tồn Đọng (đơn)</td>
-                {get_wow_cell(cw_bl, pw_bl)}
+                {get_wow_cell(cw_bl, pw_bl, inverse=True)}
                 <td class="col-mtd">{format_vietnam(total_backlog)}</td>
             </tr>
             <tr>
@@ -328,8 +325,8 @@ def render_dashboard(df, summary, primary_color):
     """
     st.markdown(html_table, unsafe_allow_html=True)
 
-    # KHU VỰC VẼ BIỂU ĐỒ (Sẽ hiển thị chart Inbound thay vì Xử lý như trước)
-    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng & Chất Lượng Phân Loại</h4>", unsafe_allow_html=True)
+    # KHU VỰC VẼ BIỂU ĐỒ 
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>1. Biểu Đồ Sản Lượng Inbound & Missort</h4>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)
 
     with col_chart1:
