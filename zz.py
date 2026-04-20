@@ -144,7 +144,6 @@ def get_data():
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
     def extract_hub_data(vol_idx, wgt_idx, ms_idx, ms_rt_idx, fte_idx, bl_idx, chuyen_idxs, tre_idxs, lh_rt_idx):
-        # 1. LẤY DỮ LIỆU NGÀY
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Tổng lượng hàng"] = [clean_val(vol_idx, c) for c in cols_to_scan]
         data["Tổng trọng lượng (Kg)"] = [clean_val(wgt_idx, c) for c in cols_to_scan]
@@ -172,7 +171,6 @@ def get_data():
         data["Xe Sai COT (Tổng)"] = xe_sai_list
         data["Xe Đúng COT (Tổng)"] = xe_dung_list
 
-        # 2. LOGIC TÌM 2 TUẦN GẦN NHẤT CÓ SỐ LIỆU
         valid_weeks = []
         for idx in weekly_col_idxs:
             val = clean_val(vol_idx, idx)
@@ -271,8 +269,6 @@ def render_dashboard(df, summary, primary_color):
     total_backlog = df['Backlog tồn đọng'].sum(skipna=True)
     total_xe_dung = df['Xe Đúng COT (Tổng)'].sum(skipna=True)
     total_xe_chay = total_xe_dung + df['Xe Sai COT (Tổng)'].sum(skipna=True)
-    
-    # ĐÂY RỒI! DÒNG BỊ THIẾU ĐÃ ĐƯỢC BỔ SUNG LẠI Ở ĐÂY NÈ!
     final_ontime_rate = (total_xe_dung / total_xe_chay * 100) if total_xe_chay > 0 else 0
     final_missort_rate = (total_missort / total_vol * 100) if total_vol > 0 else 0
 
@@ -283,21 +279,15 @@ def render_dashboard(df, summary, primary_color):
     cw_ot, pw_ot   = summary.get("cw_ot", 0), summary.get("pw_ot", 0)
 
     # -------------------------------------------------------------
-    # 1. HEADER METRICS (CÓ TIẾNG TRUNG)
+    # 1. HEADER METRICS (CHỈ HIỂN THỊ MTD SẠCH SẼ)
     # -------------------------------------------------------------
     c1, c2, c3, c4, c5 = st.columns(5)
-    
-    def get_wow_delta(cur, prev):
-        if prev == 0: return None
-        return f"{((cur - prev) / prev * 100):.1f}% WOW"
 
-    c1.metric("Tổng Sản Lượng | 入境货物总量", format_vietnam(total_vol), delta=get_wow_delta(cw_vol, pw_vol))
-    c2.metric("Tổng Trọng Lượng | 进口货物总重量", format_vietnam(total_weight) + " kg", delta=get_wow_delta(cw_wgt, pw_wgt))
-    c3.metric(f"Tổng Missort | 分拣错误 ({final_missort_rate:.2f}%)", format_vietnam(total_missort), delta=get_wow_delta(cw_ms, pw_ms), delta_color="inverse")
-    c4.metric("Tổng Backlog | 积压货物", format_vietnam(total_backlog), delta=get_wow_delta(cw_bl, pw_bl), delta_color="inverse")
-    
-    diff_ot = cw_ot - pw_ot if pw_ot > 0 else 0
-    c5.metric("Tỷ Lệ Đúng Giờ | 准点率", f"{final_ontime_rate:.2f}%", delta=f"{diff_ot:.1f}% WOW" if pw_ot > 0 else None)
+    c1.metric("Tổng Sản Lượng (MTD) | 入境货物总量", format_vietnam(total_vol))
+    c2.metric("Tổng Trọng Lượng (MTD) | 进口货物总重量", format_vietnam(total_weight) + " kg")
+    c3.metric(f"Tổng Missort (MTD) | 分拣错误 ({final_missort_rate:.2f}%)", format_vietnam(total_missort))
+    c4.metric("Tổng Backlog (MTD) | 积压货物", format_vietnam(total_backlog))
+    c5.metric("Tỷ Lệ Đúng Giờ (MTD) | 准点率", f"{final_ontime_rate:.2f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
