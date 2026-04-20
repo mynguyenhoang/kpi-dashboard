@@ -19,8 +19,8 @@ st.markdown("""<style>
     .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 20px; font-weight: 900; background-color: #dcfce7; color: #166534; }
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.08); transition: transform 0.2s ease-in-out; border-left: 5px solid #2563eb; }
     div[data-testid="metric-container"]:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.15); }
-    div[data-testid="metric-container"] label { font-size: 18px !important; font-weight: 700 !important; color: #334155 !important; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 38px !important; font-weight: 900 !important; color: #1e3a8a !important; }
+    div[data-testid="metric-container"] label { font-size: 17px !important; font-weight: 700 !important; color: #334155 !important; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 36px !important; font-weight: 900 !important; color: #1e3a8a !important; }
     .main-title { text-align: center; font-weight: 900; color: #0f172a; font-size: 46px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
 </style>""", unsafe_allow_html=True)
 
@@ -192,13 +192,12 @@ def clean_layout(fig, title):
         xaxis=dict(
             showgrid=False, 
             tickfont=dict(size=14, color='#1e293b', weight='bold'),
-            tickmode='linear', # ÉP PLOTLY HIỂN THỊ TẤT CẢ CÁC NGÀY, KHÔNG ĐƯỢC ẨN
-            tickangle=-45 # Nghiêng 45 độ cho dễ đọc và không bị đụng nhau
+            tickmode='linear', 
+            tickangle=-45 
         ),
         yaxis=dict(showgrid=True, gridcolor='#e2e8f0', tickfont=dict(size=16, color='#1e293b', weight='bold'), zeroline=False),
         hoverlabel=dict(font_size=18)
     )
-    # Gỡ bỏ textfont_size=16 ở đây để uniformtext hoạt động tốt trên từng trace
     fig.update_traces(cliponaxis=False)
     return fig
 
@@ -219,14 +218,14 @@ def render_dashboard(df, summary, primary_color):
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
     cot_mtd = (df['COT Ontime'].sum() / df['COT Total'].sum() * 100) if df['COT Total'].sum() > 0 else 0
 
-    # 1. METRICS
+    # 1. METRICS (ĐÃ THÊM TIẾNG TRUNG & ĐỔI TÊN THẺ XỬ LÝ)
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Inbound (MTD)", format_vietnam(t_vin))
-    c2.metric("Outbound (MTD)", format_vietnam(t_vout))
-    c3.metric("Xử lý (MTD)", format_vietnam(t_tproc_vol))
-    c4.metric("Trọng lượng (Kg)", format_vietnam(t_tproc_wgt))
-    c5.metric("Missort (MTD)", format_vietnam(t_ms))
-    c6.metric("Backlog (MTD)", format_vietnam(t_bl))
+    c1.metric("Inbound | 入库 (MTD)", format_vietnam(t_vin))
+    c2.metric("Outbound | 出库 (MTD)", format_vietnam(t_vout))
+    c3.metric("Tổng lượng hàng xử lý | 总处理量 (MTD)", format_vietnam(t_tproc_vol))
+    c4.metric("Trọng lượng | 重量 (Kg)", format_vietnam(t_tproc_wgt))
+    c5.metric("Missort | 错分 (MTD)", format_vietnam(t_ms))
+    c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 2. WOW TABLE
@@ -260,7 +259,6 @@ def render_dashboard(df, summary, primary_color):
     with col2:
         fig_prod_v = go.Figure()
         
-        # ĐÃ FIX: Chữ xoay dọc 90 độ, nằm bên trong cột để luôn to đùng và không bị đè
         fig_prod_v.add_trace(go.Bar(
             x=df['Ngày'], 
             y=df['Total Process Vol'], 
@@ -271,18 +269,17 @@ def render_dashboard(df, summary, primary_color):
             textposition='inside', 
             textangle=-90, 
             insidetextanchor='end', 
-            textfont=dict(size=16, color='#0f172a') # Màu chữ xanh đen đậm cho nổi bật
+            textfont=dict(size=16, color='#0f172a') 
         ))
         
         fig_prod_v.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Vol'], name="Xu hướng", line=dict(color='#dc2626', width=4, shape='spline')))
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất | 产能 (Số đơn | 单数)")
-        fig_prod_v.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) # Ép size chữ
+        fig_prod_v.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) 
         st.plotly_chart(fig_prod_v, use_container_width=True)
         
     with col3:
         fig_prod_w = go.Figure()
         
-        # ĐÃ FIX: Chữ xoay dọc 90 độ, nằm bên trong cột
         fig_prod_w.add_trace(go.Bar(
             x=df['Ngày'], 
             y=df['Total Process Wgt'], 
@@ -293,12 +290,12 @@ def render_dashboard(df, summary, primary_color):
             textposition='inside', 
             textangle=-90, 
             insidetextanchor='end', 
-            textfont=dict(size=16, color='#ffffff') # Màu chữ trắng cho nổi trên nền tím xanh
+            textfont=dict(size=16, color='#ffffff') 
         ))
         
         fig_prod_w.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Wgt'], name="Xu hướng", line=dict(color='#dc2626', width=4, shape='spline')))
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất | 产能 (Trọng lượng | 重量 kg)")
-        fig_prod_w.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) # Ép size chữ
+        fig_prod_w.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) 
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
     # 4. BIỂU ĐỒ VẬN TẢI & COT (%)
