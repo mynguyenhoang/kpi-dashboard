@@ -139,7 +139,6 @@ def get_data():
 
     cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
-    # HÀM LẤY DATA (Đã fix lỗi thiếu cột Tỷ lệ Missort)
     def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, ms_idx, ms_rt_idx, bl_idx, lhc_idx, lht_idx, shc_idx, sht_idx):
         data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
         data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
@@ -147,7 +146,7 @@ def get_data():
         data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
         data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
         data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
-        data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] # ĐÂY RỒI, THỦ PHẠM GÂY LỖI ĐÃ ĐƯỢC THÊM LẠI!
+        data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
         data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
 
         lh_c_list, lh_t_list = [], []
@@ -195,10 +194,7 @@ def get_data():
 
         return pd.DataFrame(data), weekly_summary
 
-    # HCM: Thêm index 18 (Tỷ lệ Missort)
     data_hcm = extract_hub_data(4, 5, 6, 7, 17, 18, 31, 38, 40, 39, 41)
-    
-    # BN: Thêm index 20 (Tỷ lệ Missort)
     data_bn = extract_hub_data(10, 11, 12, 13, 19, 20, 32, 47, 49, 48, 50)
     
     return data_hcm, data_bn
@@ -378,6 +374,40 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.update_xaxes(showgrid=False)
         fig_bl.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
         st.plotly_chart(fig_bl, use_container_width=True)
+
+    # 5. BẢNG DỮ LIỆU THÔ SONG NGỮ (ĐÃ FIX LẠI HOÀN CHỈNH)
+    st.markdown(f"<h4 style='color: {primary_color}; font-size: 18px;'>3. Bảng đối soát dữ liệu thô | 原始数据</h4>", unsafe_allow_html=True)
+    
+    df_show = df.copy()
+    
+    # Đổi tên cột thành Song Ngữ chuyên nghiệp
+    rename_map = {
+        "Inbound Vol": "Inbound (đơn) | 入境货物",
+        "Outbound Vol": "Outbound (đơn) | 出境货物",
+        "Inbound Wgt": "Inbound (kg) | 进口重量",
+        "Outbound Wgt": "Outbound (kg) | 出口重量",
+        "Missort": "Số đơn Missort | 分拣错误",
+        "Tỷ lệ Missort (%)": "Tỷ lệ Missort (%) | 错误率",
+        "Backlog": "Backlog (đơn) | 积压货物",
+        "LH Đúng Giờ": "LH Đúng Giờ | 干线准时",
+        "LH Trễ": "LH Trễ | 干线延误",
+        "Shuttle Đúng Giờ": "Shuttle Đúng Giờ | 班车准时",
+        "Shuttle Trễ": "Shuttle Trễ | 班车延误"
+    }
+    df_show = df_show.rename(columns=rename_map)
+
+    # Xử lý định dạng: Tỷ lệ % thêm số thập phân, Các số lượng dùng dấu chấm hàng nghìn
+    for col in df_show.columns:
+        if col != "Ngày":
+            if "Tỷ lệ" in col:
+                df_show[col] = df_show[col].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "")
+            else:
+                df_show[col] = df_show[col].apply(lambda x: format_vietnam(x) if pd.notna(x) else "")
+                
+    df_show = df_show.set_index("Ngày").T
+    
+    with st.expander("🔍 Bấm vào đây để xem Bảng Chi Tiết Thô Hàng Ngày | 每日原始数据", expanded=True):
+        st.dataframe(df_show, use_container_width=True)
 
 with tab1:
     render_dashboard(df_hcm, sum_hcm, "#0284c7") 
