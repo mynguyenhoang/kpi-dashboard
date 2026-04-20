@@ -302,20 +302,14 @@ def render_dashboard(df, summary, primary_color):
     with col4:
         fig_total = go.Figure()
         fig_total.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Tổng LH'], 
-            name="Linehaul", 
-            marker_color='#10b981',
-            text=df['Tổng LH'],
-            textposition='inside'
+        x=df['Ngày'], 
+        y=df['Tổng LH'], 
+        name="Shuttle", 
         ))
         fig_total.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Tổng Shuttle'], 
-            name="Shuttle", 
-            marker_color='#3b82f6',
-            text=df['Tổng Shuttle'],
-            textposition='inside'
+        x=df['Ngày'], 
+        y=df['Tổng Shuttle'], 
+        name="Linehaul", 
         ))
         fig_total.update_layout(
             title="Tổng số chuyến xe",
