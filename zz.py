@@ -235,8 +235,8 @@ def render_dashboard(df, summary, primary_color):
             <tr><td rowspan="3" class="col-pillar" style="color:#ef4444;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td></tr>
             <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
             <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td></tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải | 运输</td><td class="col-metric">LH Đúng Giờ (%) | 干线准时率</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
-            <tr><td class="col-metric">Shuttle Đúng Giờ (%) | 支线准时率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#10b981;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ LH sai cot (%) | 干线准时率</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
+            <tr><td class="col-metric">Tỷ lệ Shuttle sai cot (%) | 支线准时率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
         </tbody></table>""", unsafe_allow_html=True)
 
     # 3. BIỂU ĐỒ SẢN LƯỢNG & COT
