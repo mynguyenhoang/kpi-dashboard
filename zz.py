@@ -24,7 +24,7 @@ st.markdown("""<style>
     .main-title { text-align: center; font-weight: 900; color: #0f172a; font-size: 46px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (ĐÃ THÊM CẢNH BÁO LỖI)
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU 
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -35,8 +35,7 @@ def get_tenant_access_token():
         st.error(f"🔴 Lỗi lấy Token Feishu: {str(e)}")
         return None
 
-# Bỏ cache tạm thời để dễ debug lỗi
-@st.cache_data(ttl=10) 
+@st.cache_data(ttl=60) 
 def get_data():
     token = get_tenant_access_token()
     if not token:
@@ -72,7 +71,6 @@ def get_data():
     
     vals = res_data.get('data', {}).get('valueRange', {}).get('values', [])
     
-    # Kiểm tra số lượng dòng
     if not vals:
         st.error("🔴 File Feishu đang trống rỗng không có dữ liệu!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {})
@@ -258,9 +256,18 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE 
+    # 2. WOW TABLE (ĐÃ ÉP SIZE CỘT HẠNG MỤC LÀ 30%)
     st.markdown(f"""<table class="kpi-table">
-        <thead><tr><th>KPI</th><th>Hạng mục | 指标名称</th><th style="width:40px;">WOW | 环比</th><th>Tuần này | 本周</th><th>Tuần trước | 上周</th><th>MTD | 累计</th></tr></thead>
+        <thead>
+            <tr>
+                <th>KPI</th>
+                <th style="width: 30%;">Hạng mục | 指标名称</th>
+                <th style="width: 120px;">WOW | 环比</th>
+                <th>Tuần này | 本周</th>
+                <th>Tuần trước | 上周</th>
+                <th>MTD | 累计</th>
+            </tr>
+        </thead>
         <tbody>
             <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
             <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
