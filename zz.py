@@ -131,7 +131,13 @@ def get_data():
             data["Shuttle Late"] = [clean_val(sht_idx, c) for c in cols_to_scan]
             data["Linehaul Late"] = [clean_val(lht_idx, c) for c in cols_to_scan]
 
-            # ĐÃ FIX: Trả lại công thức tính Tỷ lệ ĐÚNG GIỜ (Ontime)
+            # ĐÃ CỘNG LẠI DÒNG NÀY ĐỂ KHÔNG BỊ LỖI NAMERROR
+            sh_c_list = data["Shuttle Chuyến"]
+            sh_t_list = data["Shuttle Late"]
+            lh_c_list = data["Linehaul Chuyến"]
+            lh_t_list = data["Linehaul Late"]
+
+            # Tính Tỷ lệ ĐÚNG GIỜ (Ontime)
             data["LH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(lh_c_list, lh_t_list)]
             data["SH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(sh_c_list, sh_t_list)]
 
@@ -153,7 +159,6 @@ def get_data():
                 "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0, "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
                 
-                # ĐÃ FIX: WOW tính theo % Đúng Giờ
                 "cw_lhot": ((clean_val(lhc_idx, cw_idx) - clean_val(lht_idx, cw_idx)) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
                 "pw_lhot": ((clean_val(lhc_idx, pw_idx) - clean_val(lht_idx, pw_idx)) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
                 "cw_shot": ((clean_val(shc_idx, cw_idx) - clean_val(sht_idx, cw_idx)) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
@@ -289,7 +294,6 @@ def render_dashboard(df, summary, primary_color):
     t_bl = df['Backlog'].sum(skipna=True)
     cot_ontime_mtd = df['COT Ontime'].sum(skipna=True)
     
-    # ĐÃ FIX: MTD Tính theo % ĐÚNG GIỜ
     lh_total_chuyen = df['Linehaul Chuyến'].fillna(0).sum()
     lh_total_tre = df['Linehaul Late'].fillna(0).sum()
     lhot_mtd = ((lh_total_chuyen - lh_total_tre) / lh_total_chuyen * 100) if lh_total_chuyen > 0 else 0
@@ -311,7 +315,6 @@ def render_dashboard(df, summary, primary_color):
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 2. WOW TABLE 
-    # Lưu ý: Missort & Backlog dùng inverse=True (Tăng = Đỏ). Các cái khác mặc định Tăng = Xanh
     st.markdown(f"""<table class="kpi-table">
         <thead>
             <tr>
