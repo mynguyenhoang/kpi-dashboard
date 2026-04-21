@@ -193,7 +193,6 @@ def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
 
-# ĐÃ FIX: CHỐNG LỖI "nan%" VÀ TRẢ VỀ Ô TRỐNG SẠCH ĐẸP NẾU KHÔNG CÓ DỮ LIỆU
 def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     if pd.isna(cur) and pd.isna(prev):
         return f"<td style='text-align: center;'></td><td class='col-num'></td><td class='col-num'></td>"
@@ -242,22 +241,45 @@ def clean_layout(fig, title):
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
     
-    # Lấy 3 ngày có dữ liệu gần nhất
+    # TRÍCH XUẤT 4 NGÀY GẦN NHẤT CÓ DỮ LIỆU (Để có dữ liệu so sánh ngày 1 với ngày trước nó)
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
-    last_3 = valid_df.tail(3)
-    pad_len = 3 - len(last_3)
-    d_names = ["-"] * pad_len + last_3['Ngày'].tolist()
+    last_4 = valid_df.tail(4).reset_index(drop=True)
+    
+    pad_len = 4 - len(last_4)
+    d_names = ["-"] * pad_len + last_4['Ngày'].tolist()
+    d_display = d_names[1:4] # Chỉ hiển thị 3 ngày cuối cùng lên header
 
-    # Hàm tạo ô hiển thị dữ liệu 3 ngày đó
-    def get_d(col_name, is_pct=False):
-        vals = []
-        for i in range(pad_len): vals.append("")
-        for v in last_3[col_name]:
-            if pd.isna(v) or str(v).strip() == "": vals.append("")
-            else: vals.append(f"{v:.1f}%" if is_pct else format_vietnam(v))
-        # Màu nền đậm dần cho 3 ngày
-        return f"<td class='col-num' style='background-color: #f8fafc;'>{vals[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{vals[1]}</td><td class='col-num' style='background-color: #e2e8f0; font-weight: 800; color: #1e3a8a;'>{vals[2]}</td>"
+    # HÀM HIỂN THỊ DỮ LIỆU & TÔ MÀU THÔNG MINH
+    def get_d(col_name, is_pct=False, inverse=False):
+        vals_4 = [np.nan] * pad_len + last_4[col_name].tolist()
+        display_strs = []
+        
+        for i in range(1, 4):
+            cur = vals_4[i]
+            prev = vals_4[i-1]
+            
+            if pd.isna(cur) or str(cur).strip() == "":
+                display_strs.append("")
+                continue
+                
+            cur_str = f"{cur:.1f}%" if is_pct else format_vietnam(cur)
+            
+            # Lõi so sánh và tô màu
+            if pd.notna(prev) and str(prev).strip() != "":
+                diff = cur - prev
+                if diff < 0: # NẾU GIẢM
+                    color = "#15803d" if inverse else "#dc2626" # Xanh nếu Missort/Backlog (Tốt), Đỏ nếu bthg (Xấu)
+                    icon = "↓"
+                    cur_str = f"<span style='color: {color}; font-size: 16px;'>{cur_str} {icon}</span>"
+                elif diff > 0: # NẾU TĂNG
+                    color = "#dc2626" if inverse else "#15803d" # Đỏ nếu Missort/Backlog (Xấu), Xanh nếu bthg (Tốt)
+                    icon = "↑"
+                    cur_str = f"<span style='color: {color}; font-size: 16px;'>{cur_str} {icon}</span>"
+            
+            display_strs.append(cur_str)
+            
+        return f"<td class='col-num' style='background-color: #f8fafc;'>{display_strs[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{display_strs[1]}</td><td class='col-num' style='background-color: #e2e8f0; font-weight: 800;'>{display_strs[2]}</td>"
 
     # Tính MTD
     t_vin = df['Inbound Vol'].sum(skipna=True) 
@@ -284,7 +306,7 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE (ĐÃ ÉP CỘT HẠNG MỤC XUỐNG 20% VÀ THÊM 3 CỘT NGÀY CUỐI)
+    # 2. WOW TABLE 
     st.markdown(f"""<table class="kpi-table">
         <thead>
             <tr>
@@ -294,17 +316,17 @@ def render_dashboard(df, summary, primary_color):
                 <th>Tuần này | 本周</th>
                 <th>Tuần trước | 上周</th>
                 <th>MTD | 累计</th>
-                <th style="background-color: #3b82f6;">{d_names[0]}</th>
-                <th style="background-color: #2563eb;">{d_names[1]}</th>
-                <th style="background-color: #1d4ed8;">{d_names[2]}</th>
+                <th style="background-color: #3b82f6;">{d_display[0]}</th>
+                <th style="background-color: #2563eb;">{d_display[1]}</th>
+                <th style="background-color: #1d4ed8;">{d_display[2]}</th>
             </tr>
         </thead>
         <tbody>
             <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td>{get_d('Inbound Vol')}</tr>
             <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td>{get_d('Outbound Vol')}</tr>
             <tr><td class="col-metric">Trọng lượng (kg) | 重量 kg</td>{get_wow_cell(summary['cw_tproc_wgt'], summary['pw_tproc_wgt'])}<td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td>{get_d('Total Process Wgt')}</tr>
-            <tr><td rowspan="4" class="col-pillar" style="color:#dc2626;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td>{get_d('Missort')}</tr>
-            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td>{get_d('Backlog')}</tr>
+            <tr><td rowspan="4" class="col-pillar" style="color:#dc2626;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td>{get_d('Missort', inverse=True)}</tr>
+            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td>{get_d('Backlog', inverse=True)}</tr>
             <tr><td class="col-metric">Tổng đơn gửi đúng COT | 按COT准时出库的订单总量</td>{get_wow_cell(summary['cw_cot_ontime'], summary['pw_cot_ontime'])}<td class="col-mtd">{format_vietnam(cot_ontime_mtd)}</td>{get_d('COT Ontime')}</tr>
             <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td>{get_d('COT Rate (%)', is_pct=True)}</tr>
             <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehual sai cot (%) | 干线错COT比例</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td>{get_d('LH Rate (%)', is_pct=True)}</tr>
