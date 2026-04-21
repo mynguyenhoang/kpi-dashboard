@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
-import timee
+import time
 
 # 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
@@ -24,25 +24,30 @@ st.markdown("""<style>
     .main-title { text-align: center; font-weight: 900; color: #0f172a; font-size: 46px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (ĐÃ THÊM CẢNH BÁO LỖI)
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
         payload = {"app_id": "cli_a9456e412bb89bce", "app_secret": "BwSAuHHsv2woEdIGTqJoKboH6i1i7qBB"}
         r = requests.post(url, json=payload, timeout=10)
         return r.json().get("tenant_access_token")
-    except: return None
+    except Exception as e: 
+        st.error(f"🔴 Lỗi lấy Token Feishu: {str(e)}")
+        return None
 
-@st.cache_data(ttl=60)
+# Bỏ cache tạm thời để dễ debug lỗi
+@st.cache_data(ttl=10) 
 def get_data():
     token = get_tenant_access_token()
     if not token:
-        st.error("Không lấy được Token Feishu.")
+        st.error("🔴 Không lấy được Token API Feishu. Hãy kiểm tra lại App ID và App Secret.")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+        
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     max_retries = 3
     res_data = None
+    
     for attempt in range(max_retries):
         try:
             res = requests.get(url, headers=headers, timeout=30).json()
@@ -53,13 +58,27 @@ def get_data():
                 if attempt < max_retries - 1:
                     time.sleep(2)
                     continue
-                else: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-            else: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
-        except Exception as e: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+                else: 
+                    st.error("🔴 API Feishu báo 'Not ready' quá lâu.")
+                    return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+            else: 
+                st.error(f"🔴 Lỗi từ Feishu API: {res.get('msg')} (Mã lỗi: {res.get('code')})")
+                return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+        except Exception as e: 
+            st.error(f"🔴 Lỗi kết nối mạng hoặc timeout: {str(e)}")
+            return (pd.DataFrame(), {}), (pd.DataFrame(), {})
     
     if not res_data: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+    
     vals = res_data.get('data', {}).get('valueRange', {}).get('values', [])
-    if not vals or len(vals) < 55: return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+    
+    # Kiểm tra số lượng dòng
+    if not vals:
+        st.error("🔴 File Feishu đang trống rỗng không có dữ liệu!")
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
+    if len(vals) < 55: 
+        st.error(f"🔴 Cấu trúc file bị lỗi! Cần ít nhất 55 dòng để đọc, nhưng hiện tại file chỉ có {len(vals)} dòng. Có ai đó đã lỡ xóa dòng rồi!")
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
     def clean_val(row_idx, col_idx):
         try:
@@ -73,87 +92,91 @@ def get_data():
             return np.nan
         except: return np.nan
 
-    weekly_col_idxs = [3, 4, 5, 6] 
-    date_row_idx = 3 
-    start_col_idx = -1
-    for c in range(2, len(vals[date_row_idx])):
-        val = str(vals[date_row_idx][c]).strip()
-        if val == "1":
-            start_col_idx = c
-            break
-    
-    num_days = 26 
-    if start_col_idx != -1:
-        max_day = 1
-        for c in range(start_col_idx, len(vals[date_row_idx])):
+    try:
+        weekly_col_idxs = [3, 4, 5, 6] 
+        date_row_idx = 3 
+        start_col_idx = -1
+        for c in range(2, len(vals[date_row_idx])):
             val = str(vals[date_row_idx][c]).strip()
-            if val.isdigit(): max_day = max(max_day, int(val))
-        num_days = max_day
-    else: start_col_idx = 6
-    cols_to_scan = [start_col_idx + i for i in range(num_days)]
-
-    def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx, ms_idx, ms_rt_idx, bl_idx, shc_idx, sht_idx, lhc_idx, lht_idx, cot_total_idx, cot_ontime_idx):
-        data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
-        data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
-        data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
-        data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
-        data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
-        data["Total Process Vol"] = [clean_val(tproc_vol_idx, c) for c in cols_to_scan]
-        data["Total Process Wgt"] = [clean_val(tproc_wgt_idx, c) for c in cols_to_scan]
-        data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
-        data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
-        data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
+            if val == "1":
+                start_col_idx = c
+                break
         
-        data["COT Total"] = [clean_val(cot_total_idx, c) for c in cols_to_scan]
-        data["COT Ontime"] = [clean_val(cot_ontime_idx, c) for c in cols_to_scan]
-        data["COT Rate (%)"] = [(o / t * 100) if (t > 0) else np.nan for t, o in zip(data["COT Total"], data["COT Ontime"])]
+        num_days = 26 
+        if start_col_idx != -1:
+            max_day = 1
+            for c in range(start_col_idx, len(vals[date_row_idx])):
+                val = str(vals[date_row_idx][c]).strip()
+                if val.isdigit(): max_day = max(max_day, int(val))
+            num_days = max_day
+        else: start_col_idx = 6
+        cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
-        data["Shuttle Chuyến"] = [clean_val(shc_idx, c) for c in cols_to_scan]
-        data["Linehaul Chuyến"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
-        data["Shuttle Late"] = [clean_val(sht_idx, c) for c in cols_to_scan]
-        data["Linehaul Late"] = [clean_val(lht_idx, c) for c in cols_to_scan]
-
-        sh_c_list, sh_t_list = data["Shuttle Chuyến"], data["Shuttle Late"]
-        lh_c_list, lh_t_list = data["Linehaul Chuyến"], data["Linehaul Late"]
-
-        data["LH Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(lh_c_list, lh_t_list)]
-        data["LH Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(lh_c_list, lh_t_list)]
-        data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
-        data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
-
-        valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
-        cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
-        pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
-
-        def get_rate(num_idx, den_idx, col_idx):
-            if col_idx == -1: return 0
-            n = clean_val(num_idx, col_idx)
-            d = clean_val(den_idx, col_idx)
-            return (n / d * 100) if (d and d > 0) else 0
-
-        weekly_summary = {
-            "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
-            "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
+        def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx, ms_idx, ms_rt_idx, bl_idx, shc_idx, sht_idx, lhc_idx, lht_idx, cot_total_idx, cot_ontime_idx):
+            data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
+            data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
+            data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
+            data["Inbound Wgt"] = [clean_val(win_idx, c) for c in cols_to_scan]
+            data["Outbound Wgt"] = [clean_val(wout_idx, c) for c in cols_to_scan]
+            data["Total Process Vol"] = [clean_val(tproc_vol_idx, c) for c in cols_to_scan]
+            data["Total Process Wgt"] = [clean_val(tproc_wgt_idx, c) for c in cols_to_scan]
+            data["Missort"] = [clean_val(ms_idx, c) for c in cols_to_scan]
+            data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
+            data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
             
-            # --- MAP THÊM DỮ LIỆU ĐƠN GỬI ĐÚNG COT ---
-            "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0,
-            "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
+            data["COT Total"] = [clean_val(cot_total_idx, c) for c in cols_to_scan]
+            data["COT Ontime"] = [clean_val(cot_ontime_idx, c) for c in cols_to_scan]
+            data["COT Rate (%)"] = [(o / t * 100) if (t > 0) else np.nan for t, o in zip(data["COT Total"], data["COT Ontime"])]
 
-            "cw_lhot": ((clean_val(lhc_idx, cw_idx) - clean_val(lht_idx, cw_idx)) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
-            "pw_lhot": ((clean_val(lhc_idx, pw_idx) - clean_val(lht_idx, pw_idx)) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
-            "cw_shot": ((clean_val(shc_idx, cw_idx) - clean_val(sht_idx, cw_idx)) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
-            "pw_shot": ((clean_val(shc_idx, pw_idx) - clean_val(sht_idx, pw_idx)) / clean_val(shc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(shc_idx, pw_idx) > 0 else 0,
-            "cw_cot": get_rate(cot_ontime_idx, cot_total_idx, cw_idx),
-            "pw_cot": get_rate(cot_ontime_idx, cot_total_idx, pw_idx),
-        }
-        return pd.DataFrame(data), weekly_summary
+            data["Shuttle Chuyến"] = [clean_val(shc_idx, c) for c in cols_to_scan]
+            data["Linehaul Chuyến"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
+            data["Shuttle Late"] = [clean_val(sht_idx, c) for c in cols_to_scan]
+            data["Linehaul Late"] = [clean_val(lht_idx, c) for c in cols_to_scan]
 
-    data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, shc_idx=38, sht_idx=40, lhc_idx=39, lht_idx=41, cot_total_idx=35, cot_ontime_idx=36)
-    data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, shc_idx=47, sht_idx=49, lhc_idx=48, lht_idx=50, cot_total_idx=44, cot_ontime_idx=45)
-    return data_hcm, data_bn
+            sh_c_list, sh_t_list = data["Shuttle Chuyến"], data["Shuttle Late"]
+            lh_c_list, lh_t_list = data["Linehaul Chuyến"], data["Linehaul Late"]
+
+            data["LH Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(lh_c_list, lh_t_list)]
+            data["LH Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(lh_c_list, lh_t_list)]
+            data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
+            data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
+
+            valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
+            cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
+            pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
+
+            def get_rate(num_idx, den_idx, col_idx):
+                if col_idx == -1: return 0
+                n = clean_val(num_idx, col_idx)
+                d = clean_val(den_idx, col_idx)
+                return (n / d * 100) if (d and d > 0) else 0
+
+            weekly_summary = {
+                "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
+                
+                "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0,
+                "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
+
+                "cw_lhot": ((clean_val(lhc_idx, cw_idx) - clean_val(lht_idx, cw_idx)) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
+                "pw_lhot": ((clean_val(lhc_idx, pw_idx) - clean_val(lht_idx, pw_idx)) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
+                "cw_shot": ((clean_val(shc_idx, cw_idx) - clean_val(sht_idx, cw_idx)) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
+                "pw_shot": ((clean_val(shc_idx, pw_idx) - clean_val(sht_idx, pw_idx)) / clean_val(shc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(shc_idx, pw_idx) > 0 else 0,
+                "cw_cot": get_rate(cot_ontime_idx, cot_total_idx, cw_idx),
+                "pw_cot": get_rate(cot_ontime_idx, cot_total_idx, pw_idx),
+            }
+            return pd.DataFrame(data), weekly_summary
+
+        data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 17, 18, 31, shc_idx=38, sht_idx=40, lhc_idx=39, lht_idx=41, cot_total_idx=35, cot_ontime_idx=36)
+        data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 19, 20, 32, shc_idx=47, sht_idx=49, lhc_idx=48, lht_idx=50, cot_total_idx=44, cot_ontime_idx=45)
+        return data_hcm, data_bn
+        
+    except Exception as e:
+        st.error(f"🔴 Lỗi khi xử lý dữ liệu từ file: {str(e)}. Cấu trúc file có thể đã bị thay đổi (xóa dòng/cột)!")
+        return (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
 # 3. GIAO DIỆN CHÍNH
 st.markdown("<div class='main-title'>J&T CARGO KPI DASHBOARD</div>", unsafe_allow_html=True)
@@ -162,7 +185,7 @@ df_hcm, sum_hcm = data_hcm
 df_bn, sum_bn = data_bn
 
 if df_hcm.empty and df_bn.empty:
-    st.warning("Đang tải dữ liệu...")
+    st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
     st.stop()
 
 tab1, tab2 = st.tabs(["📌 HỒ CHÍ MINH HUB", "📌 BẮC NINH HUB"])
@@ -217,7 +240,6 @@ def render_dashboard(df, summary, primary_color):
     t_ms = df['Missort'].sum(skipna=True)
     t_bl = df['Backlog'].sum(skipna=True)
     
-    # Tính toán riêng MTD cho Tổng đơn đúng COT
     cot_ontime_mtd = df['COT Ontime'].sum(skipna=True)
     
     lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
@@ -226,7 +248,7 @@ def render_dashboard(df, summary, primary_color):
     shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
     cot_mtd = (df['COT Ontime'].sum() / df['COT Total'].sum() * 100) if df['COT Total'].sum() > 0 else 0
 
-    # 1. METRICS
+    # 1. METRICS 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Inbound | 入库 (MTD)", format_vietnam(t_vin))
     c2.metric("Outbound | 出库 (MTD)", format_vietnam(t_vout))
@@ -236,7 +258,7 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE (ĐÃ BƠM TIẾNG TRUNG & THÊM DÒNG TỔNG ĐƠN ĐÚNG COT)
+    # 2. WOW TABLE 
     st.markdown(f"""<table class="kpi-table">
         <thead><tr><th>KPI</th><th>Hạng mục | 指标名称</th><th style="width:120px;">WOW | 环比</th><th>Tuần này | 本周</th><th>Tuần trước | 上周</th><th>MTD | 累计</th></tr></thead>
         <tbody>
