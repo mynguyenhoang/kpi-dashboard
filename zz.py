@@ -260,7 +260,7 @@ def render_dashboard(df, summary, primary_color):
 
     # 2. WOW TABLE 
     st.markdown(f"""<table class="kpi-table">
-        <thead><tr><th>KPI</th><th>Hạng mục | 指标名称</th><th style="width:90px;">WOW | 环比</th><th>Tuần này | 本周</th><th>Tuần trước | 上周</th><th>MTD | 累计</th></tr></thead>
+        <thead><tr><th>KPI</th><th>Hạng mục | 指标名称</th><th style="width:40px;">WOW | 环比</th><th>Tuần này | 本周</th><th>Tuần trước | 上周</th><th>MTD | 累计</th></tr></thead>
         <tbody>
             <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
             <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
