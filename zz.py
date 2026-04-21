@@ -139,9 +139,9 @@ def get_data():
             data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
             data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
             
-            # Tính % Tỷ lệ xe đúng giờ cho 3 ngày gần nhất
-            data["LH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(lh_c_list, lh_t_list)]
-            data["SH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(sh_c_list, sh_t_list)]
+            # ĐÃ SỬA CÔNG THỨC: TÍNH % SAI COT (LỖI) ĐÚNG NGHĨA ĐỂ MAP MÀU CHUẨN XÁC
+            data["LH Error Rate (%)"] = [(t if pd.notna(t) else 0) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(lh_c_list, lh_t_list)]
+            data["SH Error Rate (%)"] = [(t if pd.notna(t) else 0) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(sh_c_list, sh_t_list)]
 
             valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
             cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
@@ -160,10 +160,13 @@ def get_data():
                 "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0, "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
-                "cw_lhot": ((clean_val(lhc_idx, cw_idx) - clean_val(lht_idx, cw_idx)) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
-                "pw_lhot": ((clean_val(lhc_idx, pw_idx) - clean_val(lht_idx, pw_idx)) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
-                "cw_shot": ((clean_val(shc_idx, cw_idx) - clean_val(sht_idx, cw_idx)) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
-                "pw_shot": ((clean_val(shc_idx, pw_idx) - clean_val(sht_idx, pw_idx)) / clean_val(shc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(shc_idx, pw_idx) > 0 else 0,
+                
+                # ĐÃ SỬA CÔNG THỨC WOW CHO % SAI COT
+                "cw_lhot_err": (clean_val(lht_idx, cw_idx) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
+                "pw_lhot_err": (clean_val(lht_idx, pw_idx) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
+                "cw_shot_err": (clean_val(sht_idx, cw_idx) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
+                "pw_shot_err": (clean_val(sht_idx, pw_idx) / clean_val(shc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(shc_idx, pw_idx) > 0 else 0,
+                
                 "cw_cot": get_rate(cot_ontime_idx, cot_total_idx, cw_idx),
                 "pw_cot": get_rate(cot_ontime_idx, cot_total_idx, pw_idx),
             }
@@ -250,12 +253,10 @@ def render_dashboard(df, summary, primary_color):
     d_names = ["-"] * pad_len + last_4['Ngày'].tolist()
     d_display = d_names[1:4] 
 
-    # HÀM HIỂN THỊ DỮ LIỆU 3 NGÀY CUỐI (ĐÃ FIX FONT CHỮ HIỆN ĐẠI, DỄ ĐỌC)
     def get_d(col_name, is_pct=False, inverse=False):
         vals_4 = [np.nan] * pad_len + last_4[col_name].tolist()
         display_strs = []
         
-        # Style ép font hiện đại thay vì dùng Courier New của class col-num
         base_style = "font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 17px; font-weight: 700;"
         
         for i in range(1, 4):
@@ -296,10 +297,14 @@ def render_dashboard(df, summary, primary_color):
     t_bl = df['Backlog'].sum(skipna=True)
     cot_ontime_mtd = df['COT Ontime'].sum(skipna=True)
     
-    lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
-    sh_total = df['Shuttle Đúng Giờ'].fillna(0).sum() + df['Shuttle Trễ'].fillna(0).sum()
-    lhot_mtd = (df['LH Đúng Giờ'].fillna(0).sum() / lh_total * 100) if lh_total > 0 else 0
-    shot_mtd = (df['Shuttle Đúng Giờ'].fillna(0).sum() / sh_total * 100) if sh_total > 0 else 0
+    lh_total_chuyen = df['Linehaul Chuyến'].fillna(0).sum()
+    lh_total_tre = df['Linehaul Late'].fillna(0).sum()
+    lherr_mtd = (lh_total_tre / lh_total_chuyen * 100) if lh_total_chuyen > 0 else 0
+    
+    sh_total_chuyen = df['Shuttle Chuyến'].fillna(0).sum()
+    sh_total_tre = df['Shuttle Late'].fillna(0).sum()
+    sherr_mtd = (sh_total_tre / sh_total_chuyen * 100) if sh_total_chuyen > 0 else 0
+    
     cot_mtd = (df['COT Ontime'].sum() / df['COT Total'].sum() * 100) if df['COT Total'].sum() > 0 else 0
 
     # 1. METRICS 
@@ -335,8 +340,8 @@ def render_dashboard(df, summary, primary_color):
             <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td>{get_d('Backlog', inverse=True)}</tr>
             <tr><td class="col-metric">Tổng đơn gửi đúng COT | 按COT准时出库的订单总量</td>{get_wow_cell(summary['cw_cot_ontime'], summary['pw_cot_ontime'])}<td class="col-mtd">{format_vietnam(cot_ontime_mtd)}</td>{get_d('COT Ontime')}</tr>
             <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td>{get_d('COT Rate (%)', is_pct=True)}</tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehual sai cot (%) | 干线错COT比例</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td>{get_d('LH Rate (%)', is_pct=True)}</tr>
-            <tr><td class="col-metric">Tỷ lệ xe Shuttle sai cot (%) | 摆渡错COT率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td>{get_d('SH Rate (%)', is_pct=True)}</tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehual sai cot (%) | 干线错COT比例</td>{get_wow_cell(summary['cw_lhot_err'], summary['pw_lhot_err'], is_pct=True, inverse=True)}<td class="col-mtd">{lherr_mtd:.2f}%</td>{get_d('LH Error Rate (%)', is_pct=True, inverse=True)}</tr>
+            <tr><td class="col-metric">Tỷ lệ xe Shuttle sai cot (%) | 摆渡错COT率</td>{get_wow_cell(summary['cw_shot_err'], summary['pw_shot_err'], is_pct=True, inverse=True)}<td class="col-mtd">{sherr_mtd:.2f}%</td>{get_d('SH Error Rate (%)', is_pct=True, inverse=True)}</tr>
         </tbody></table>""", unsafe_allow_html=True)
 
     # 3. BIỂU ĐỒ SẢN LƯỢNG & NĂNG SUẤT
