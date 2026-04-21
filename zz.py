@@ -241,19 +241,22 @@ def clean_layout(fig, title):
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
     
-    # TRÍCH XUẤT 4 NGÀY GẦN NHẤT CÓ DỮ LIỆU (Để có dữ liệu so sánh ngày 1 với ngày trước nó)
+    # TRÍCH XUẤT 4 NGÀY GẦN NHẤT CÓ DỮ LIỆU
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
     last_4 = valid_df.tail(4).reset_index(drop=True)
     
     pad_len = 4 - len(last_4)
     d_names = ["-"] * pad_len + last_4['Ngày'].tolist()
-    d_display = d_names[1:4] # Chỉ hiển thị 3 ngày cuối cùng lên header
+    d_display = d_names[1:4] 
 
-    # HÀM HIỂN THỊ DỮ LIỆU & TÔ MÀU THÔNG MINH
+    # HÀM HIỂN THỊ DỮ LIỆU 3 NGÀY CUỐI (ĐÃ FIX FONT CHỮ HIỆN ĐẠI, DỄ ĐỌC)
     def get_d(col_name, is_pct=False, inverse=False):
         vals_4 = [np.nan] * pad_len + last_4[col_name].tolist()
         display_strs = []
+        
+        # Style ép font hiện đại thay vì dùng Courier New của class col-num
+        base_style = "font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 17px; font-weight: 700;"
         
         for i in range(1, 4):
             cur = vals_4[i]
@@ -265,21 +268,24 @@ def render_dashboard(df, summary, primary_color):
                 
             cur_str = f"{cur:.1f}%" if is_pct else format_vietnam(cur)
             
-            # Lõi so sánh và tô màu
             if pd.notna(prev) and str(prev).strip() != "":
                 diff = cur - prev
                 if diff < 0: # NẾU GIẢM
-                    color = "#15803d" if inverse else "#dc2626" # Xanh nếu Missort/Backlog (Tốt), Đỏ nếu bthg (Xấu)
+                    color = "#15803d" if inverse else "#dc2626" 
                     icon = "↓"
-                    cur_str = f"<span style='color: {color}; font-size: 16px;'>{cur_str} {icon}</span>"
+                    cur_str = f"<span style='color: {color}; {base_style}'>{cur_str} &nbsp;{icon}</span>"
                 elif diff > 0: # NẾU TĂNG
-                    color = "#dc2626" if inverse else "#15803d" # Đỏ nếu Missort/Backlog (Xấu), Xanh nếu bthg (Tốt)
+                    color = "#dc2626" if inverse else "#15803d" 
                     icon = "↑"
-                    cur_str = f"<span style='color: {color}; font-size: 16px;'>{cur_str} {icon}</span>"
+                    cur_str = f"<span style='color: {color}; {base_style}'>{cur_str} &nbsp;{icon}</span>"
+                else:
+                    cur_str = f"<span style='color: #475569; {base_style}'>{cur_str}</span>"
+            else:
+                cur_str = f"<span style='color: #1e293b; {base_style}'>{cur_str}</span>"
             
             display_strs.append(cur_str)
             
-        return f"<td class='col-num' style='background-color: #f8fafc;'>{display_strs[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{display_strs[1]}</td><td class='col-num' style='background-color: #e2e8f0; font-weight: 800;'>{display_strs[2]}</td>"
+        return f"<td class='col-num' style='background-color: #f8fafc;'>{display_strs[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{display_strs[1]}</td><td class='col-num' style='background-color: #e2e8f0;'>{display_strs[2]}</td>"
 
     # Tính MTD
     t_vin = df['Inbound Vol'].sum(skipna=True) 
