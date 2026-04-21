@@ -11,12 +11,12 @@ import time
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
-    .kpi-table th { background-color: #1e3a8a; color: #ffffff; padding: 16px; text-align: center; border: 1px solid #94a3b8; font-size: 18px; font-weight: 800; }
-    .kpi-table td { padding: 14px 16px; border: 1px solid #cbd5e1; font-size: 17px; vertical-align: middle; color: #1e293b; }
-    .col-pillar { font-weight: 800; text-align: center; background-color: #f1f5f9; font-size: 18px; }
+    .kpi-table th { background-color: #1e3a8a; color: #ffffff; padding: 14px 10px; text-align: center; border: 1px solid #94a3b8; font-size: 16px; font-weight: 800; }
+    .kpi-table td { padding: 12px 10px; border: 1px solid #cbd5e1; font-size: 16px; vertical-align: middle; color: #1e293b; }
+    .col-pillar { font-weight: 800; text-align: center; background-color: #f1f5f9; font-size: 17px; }
     .col-metric { font-weight: 700; color: #0f172a; }
-    .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 18px; font-weight: 700; color: #0f172a;}
-    .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 20px; font-weight: 900; background-color: #dcfce7; color: #166534; }
+    .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 17px; font-weight: 700; color: #0f172a;}
+    .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 19px; font-weight: 900; background-color: #dcfce7; color: #166534; }
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.08); transition: transform 0.2s ease-in-out; border-left: 5px solid #2563eb; }
     div[data-testid="metric-container"]:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.15); }
     div[data-testid="metric-container"] label { font-size: 17px !important; font-weight: 700 !important; color: #334155 !important; }
@@ -138,6 +138,10 @@ def get_data():
             data["LH Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(lh_c_list, lh_t_list)]
             data["Shuttle Đúng Giờ"] = [(c - t) if (c > 0) else np.nan for c, t in zip(sh_c_list, sh_t_list)]
             data["Shuttle Trễ"] = [t if t > 0 else (np.nan if c == 0 else 0) for c, t in zip(sh_c_list, sh_t_list)]
+            
+            # Tính % Tỷ lệ xe đúng giờ cho 3 ngày gần nhất
+            data["LH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(lh_c_list, lh_t_list)]
+            data["SH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(sh_c_list, sh_t_list)]
 
             valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
             cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
@@ -155,10 +159,7 @@ def get_data():
                 "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
-                
-                "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0,
-                "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
-
+                "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0, "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_lhot": ((clean_val(lhc_idx, cw_idx) - clean_val(lht_idx, cw_idx)) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
                 "pw_lhot": ((clean_val(lhc_idx, pw_idx) - clean_val(lht_idx, pw_idx)) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
                 "cw_shot": ((clean_val(shc_idx, cw_idx) - clean_val(sht_idx, cw_idx)) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
@@ -192,12 +193,23 @@ def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
 
+# ĐÃ FIX: CHỐNG LỖI "nan%" VÀ TRẢ VỀ Ô TRỐNG SẠCH ĐẸP NẾU KHÔNG CÓ DỮ LIỆU
 def get_wow_cell(cur, prev, is_pct=False, inverse=False):
-    if prev is None or pd.isna(prev) or (prev == 0 and not is_pct):
-        cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
+    if pd.isna(cur) and pd.isna(prev):
+        return f"<td style='text-align: center;'></td><td class='col-num'></td><td class='col-num'></td>"
+        
+    if pd.isna(prev) or (prev == 0 and not is_pct):
+        cur_str = f"{cur:.2f}%" if is_pct and pd.notna(cur) else format_vietnam(cur)
+        if pd.isna(cur): cur_str = ""
         return f"<td style='text-align: center; font-size: 16px;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
+        
+    if pd.isna(cur):
+        prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
+        return f"<td style='text-align: center; font-size: 16px;'>-</td><td class='col-num'>-</td><td class='col-num'>{prev_str}</td>"
+
     diff = cur - prev
     pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
+    
     if diff > 0:
         bg_color, text_color, sign = "#dcfce7", "#15803d", "+"
         if inverse: bg_color, text_color = "#fee2e2", "#b91c1c"
@@ -230,6 +242,23 @@ def clean_layout(fig, title):
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
     
+    # Lấy 3 ngày có dữ liệu gần nhất
+    valid_df = df.dropna(subset=['Inbound Vol'])
+    valid_df = valid_df[valid_df['Inbound Vol'] > 0]
+    last_3 = valid_df.tail(3)
+    pad_len = 3 - len(last_3)
+    d_names = ["-"] * pad_len + last_3['Ngày'].tolist()
+
+    # Hàm tạo ô hiển thị dữ liệu 3 ngày đó
+    def get_d(col_name, is_pct=False):
+        vals = []
+        for i in range(pad_len): vals.append("")
+        for v in last_3[col_name]:
+            if pd.isna(v) or str(v).strip() == "": vals.append("")
+            else: vals.append(f"{v:.1f}%" if is_pct else format_vietnam(v))
+        # Màu nền đậm dần cho 3 ngày
+        return f"<td class='col-num' style='background-color: #f8fafc;'>{vals[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{vals[1]}</td><td class='col-num' style='background-color: #e2e8f0; font-weight: 800; color: #1e3a8a;'>{vals[2]}</td>"
+
     # Tính MTD
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
@@ -237,7 +266,6 @@ def render_dashboard(df, summary, primary_color):
     t_tproc_wgt = df['Total Process Wgt'].sum(skipna=True)
     t_ms = df['Missort'].sum(skipna=True)
     t_bl = df['Backlog'].sum(skipna=True)
-    
     cot_ontime_mtd = df['COT Ontime'].sum(skipna=True)
     
     lh_total = df['LH Đúng Giờ'].fillna(0).sum() + df['LH Trễ'].fillna(0).sum()
@@ -256,28 +284,31 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE (ĐÃ ÉP SIZE CỘT HẠNG MỤC LÀ 30%)
+    # 2. WOW TABLE (ĐÃ ÉP CỘT HẠNG MỤC XUỐNG 20% VÀ THÊM 3 CỘT NGÀY CUỐI)
     st.markdown(f"""<table class="kpi-table">
         <thead>
             <tr>
                 <th>KPI</th>
-                <th style="width: 30%;">Hạng mục | 指标名称</th>
-                <th style="width: 120px;">WOW | 环比</th>
+                <th style="width: 20%;">Hạng mục | 指标名称</th>
+                <th style="width: 100px;">WOW | 环比</th>
                 <th>Tuần này | 本周</th>
                 <th>Tuần trước | 上周</th>
                 <th>MTD | 累计</th>
+                <th style="background-color: #3b82f6;">{d_names[0]}</th>
+                <th style="background-color: #2563eb;">{d_names[1]}</th>
+                <th style="background-color: #1d4ed8;">{d_names[2]}</th>
             </tr>
         </thead>
         <tbody>
-            <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td></tr>
-            <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td></tr>
-            <tr><td class="col-metric">Trọng lượng (kg) | 重量 kg</td>{get_wow_cell(summary['cw_tproc_wgt'], summary['pw_tproc_wgt'])}<td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td></tr>
-            <tr><td rowspan="4" class="col-pillar" style="color:#dc2626;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td></tr>
-            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td></tr>
-            <tr><td class="col-metric">Tổng đơn gửi đúng COT | 按COT准时出库的订单总量</td>{get_wow_cell(summary['cw_cot_ontime'], summary['pw_cot_ontime'])}<td class="col-mtd">{format_vietnam(cot_ontime_mtd)}</td></tr>
-            <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td></tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehual sai cot (%) | 干线错COT比例</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td></tr>
-            <tr><td class="col-metric">Tỷ lệ xe Shuttle sai cot (%) | 摆渡错COT率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td></tr>
+            <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{get_wow_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td>{get_d('Inbound Vol')}</tr>
+            <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{get_wow_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td>{get_d('Outbound Vol')}</tr>
+            <tr><td class="col-metric">Trọng lượng (kg) | 重量 kg</td>{get_wow_cell(summary['cw_tproc_wgt'], summary['pw_tproc_wgt'])}<td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td>{get_d('Total Process Wgt')}</tr>
+            <tr><td rowspan="4" class="col-pillar" style="color:#dc2626;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{get_wow_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td>{get_d('Missort')}</tr>
+            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{get_wow_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td>{get_d('Backlog')}</tr>
+            <tr><td class="col-metric">Tổng đơn gửi đúng COT | 按COT准时出库的订单总量</td>{get_wow_cell(summary['cw_cot_ontime'], summary['pw_cot_ontime'])}<td class="col-mtd">{format_vietnam(cot_ontime_mtd)}</td>{get_d('COT Ontime')}</tr>
+            <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{get_wow_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td>{get_d('COT Rate (%)', is_pct=True)}</tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehual sai cot (%) | 干线错COT比例</td>{get_wow_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td>{get_d('LH Rate (%)', is_pct=True)}</tr>
+            <tr><td class="col-metric">Tỷ lệ xe Shuttle sai cot (%) | 摆渡错COT率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td>{get_d('SH Rate (%)', is_pct=True)}</tr>
         </tbody></table>""", unsafe_allow_html=True)
 
     # 3. BIỂU ĐỒ SẢN LƯỢNG & NĂNG SUẤT
