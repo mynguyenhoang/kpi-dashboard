@@ -10,6 +10,7 @@ import time
 # 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
+    /* --- STYLE ĐỊNH DẠNG BẢNG & GIAO DIỆN CỦA ÔNG --- */
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
     .kpi-table th { background-color: #1e3a8a; color: #ffffff; padding: 14px 10px; text-align: center; border: 1px solid #94a3b8; font-size: 16px; font-weight: 800; }
     .kpi-table td { padding: 12px 10px; border: 1px solid #cbd5e1; font-size: 16px; vertical-align: middle; color: #1e293b; }
@@ -22,13 +23,23 @@ st.markdown("""<style>
     div[data-testid="metric-container"] label { font-size: 17px !important; font-weight: 700 !important; color: #334155 !important; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 36px !important; font-weight: 900 !important; color: #1e3a8a !important; }
     .main-title { text-align: center; font-weight: 900; color: #0f172a; font-size: 46px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+    
+    /* --- ĐOẠN CSS BƠM THÊM ĐỂ BẢO VỆ CHẤT XÁM (ẨN NÚT GITHUB, MENU) --- */
+    #MainMenu {visibility: hidden;} /* Ẩn menu chính */
+    header {visibility: hidden;} /* Ẩn toàn bộ thanh header chứa nút Fork/Github */
+    footer {visibility: hidden;} /* Ẩn chữ Made with Streamlit ở cuối trang */
+    [data-testid="stToolbar"] {visibility: hidden !important;} /* Đảm bảo ẩn thanh công cụ góc phải */
 </style>""", unsafe_allow_html=True)
 
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU 
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+        
+        # LƯU Ý BẢO MẬT: Ông đang để lộ App ID và Secret Key ở đây. 
+        # Tạm thời tôi giữ nguyên để code chạy được, nhưng ông nên dùng st.secrets sau này nhé.
         payload = {"app_id": "cli_a9456e412bb89bce", "app_secret": "BwSAuHHsv2woEdIGTqJoKboH6i1i7qBB"}
+        
         r = requests.post(url, json=payload, timeout=10)
         return r.json().get("tenant_access_token")
     except Exception as e: 
@@ -131,13 +142,11 @@ def get_data():
             data["Shuttle Late"] = [clean_val(sht_idx, c) for c in cols_to_scan]
             data["Linehaul Late"] = [clean_val(lht_idx, c) for c in cols_to_scan]
 
-            # ĐÃ CỘNG LẠI DÒNG NÀY ĐỂ KHÔNG BỊ LỖI NAMERROR
             sh_c_list = data["Shuttle Chuyến"]
             sh_t_list = data["Shuttle Late"]
             lh_c_list = data["Linehaul Chuyến"]
             lh_t_list = data["Linehaul Late"]
 
-            # Tính Tỷ lệ ĐÚNG GIỜ (Ontime)
             data["LH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(lh_c_list, lh_t_list)]
             data["SH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(sh_c_list, sh_t_list)]
 
@@ -241,7 +250,6 @@ def clean_layout(fig, title):
 def render_dashboard(df, summary, primary_color):
     if df.empty: return
     
-    # TRÍCH XUẤT 4 NGÀY GẦN NHẤT CÓ DỮ LIỆU
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
     last_4 = valid_df.tail(4).reset_index(drop=True)
@@ -268,11 +276,11 @@ def render_dashboard(df, summary, primary_color):
             
             if pd.notna(prev) and str(prev).strip() != "":
                 diff = cur - prev
-                if diff < 0: # NẾU GIẢM
+                if diff < 0: 
                     color = "#15803d" if inverse else "#dc2626" 
                     icon = "↓"
                     cur_str = f"<span style='color: {color}; {base_style}'>{cur_str} &nbsp;{icon}</span>"
-                elif diff > 0: # NẾU TĂNG
+                elif diff > 0: 
                     color = "#dc2626" if inverse else "#15803d" 
                     icon = "↑"
                     cur_str = f"<span style='color: {color}; {base_style}'>{cur_str} &nbsp;{icon}</span>"
@@ -285,7 +293,6 @@ def render_dashboard(df, summary, primary_color):
             
         return f"<td class='col-num' style='background-color: #f8fafc;'>{display_strs[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{display_strs[1]}</td><td class='col-num' style='background-color: #e2e8f0;'>{display_strs[2]}</td>"
 
-    # Tính MTD
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
     t_tproc_vol = df['Total Process Vol'].sum(skipna=True)
@@ -304,7 +311,6 @@ def render_dashboard(df, summary, primary_color):
     
     cot_mtd = (df['COT Ontime'].sum() / df['COT Total'].sum() * 100) if df['COT Total'].sum() > 0 else 0
 
-    # 1. METRICS 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Inbound | 入库 (MTD)", format_vietnam(t_vin))
     c2.metric("Outbound | 出库 (MTD)", format_vietnam(t_vout))
@@ -314,7 +320,6 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. WOW TABLE 
     st.markdown(f"""<table class="kpi-table">
         <thead>
             <tr>
@@ -341,7 +346,6 @@ def render_dashboard(df, summary, primary_color):
             <tr><td class="col-metric">Tỷ lệ xe Shuttle đúng cot (%) | 摆渡准时COT率</td>{get_wow_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td>{get_d('SH Rate (%)', is_pct=True)}</tr>
         </tbody></table>""", unsafe_allow_html=True)
 
-    # 3. BIỂU ĐỒ SẢN LƯỢNG & NĂNG SUẤT
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 30px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>1. Sản Lượng & Năng Suất | 生产与产能</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1.2, 1, 1])
     
@@ -358,16 +362,9 @@ def render_dashboard(df, summary, primary_color):
     with col2:
         fig_prod_v = go.Figure()
         fig_prod_v.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Total Process Vol'], 
-            name="Năng suất", 
-            marker_color='#38bdf8', 
-            opacity=0.9,
+            x=df['Ngày'], y=df['Total Process Vol'], name="Năng suất", marker_color='#38bdf8', opacity=0.9,
             text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Vol']], 
-            textposition='inside', 
-            textangle=-90, 
-            insidetextanchor='end', 
-            textfont=dict(size=16, color='#0f172a') 
+            textposition='inside', textangle=-90, insidetextanchor='end', textfont=dict(size=16, color='#0f172a') 
         ))
         fig_prod_v.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Vol'], name="Xu hướng", line=dict(color='#dc2626', width=4, shape='spline')))
         fig_prod_v = clean_layout(fig_prod_v, "Năng suất | 产能 (Số đơn | 单数)")
@@ -377,23 +374,15 @@ def render_dashboard(df, summary, primary_color):
     with col3:
         fig_prod_w = go.Figure()
         fig_prod_w.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['Total Process Wgt'], 
-            name="Trọng lượng", 
-            marker_color='#818cf8', 
-            opacity=0.9,
+            x=df['Ngày'], y=df['Total Process Wgt'], name="Trọng lượng", marker_color='#818cf8', opacity=0.9,
             text=[f"<b>{format_vietnam(v)}</b>" if v > 0 else "" for v in df['Total Process Wgt']], 
-            textposition='inside', 
-            textangle=-90, 
-            insidetextanchor='end', 
-            textfont=dict(size=16, color='#ffffff') 
+            textposition='inside', textangle=-90, insidetextanchor='end', textfont=dict(size=16, color='#ffffff') 
         ))
         fig_prod_w.add_trace(go.Scatter(x=df['Ngày'], y=df['Total Process Wgt'], name="Xu hướng", line=dict(color='#dc2626', width=4, shape='spline')))
         fig_prod_w = clean_layout(fig_prod_w, "Năng suất | 产能 (Trọng lượng | 重量 kg)")
         fig_prod_w.update_layout(height=500, showlegend=False, uniformtext=dict(minsize=14, mode='show')) 
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
-    # 4. BIỂU ĐỒ VẬN TẢI & COT (%)
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 40px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & COT | 运输与准时出库管理</h3>", unsafe_allow_html=True)
     
     col_t1, col_t2 = st.columns(2) 
@@ -409,37 +398,27 @@ def render_dashboard(df, summary, primary_color):
     with col_t2:
         fig_cot = go.Figure()
         fig_cot.add_trace(go.Bar(
-            x=df['Ngày'], 
-            y=df['COT Total'], 
-            name="Tổng đơn", 
-            marker_color='#bae6fd', 
-            opacity=0.8,
+            x=df['Ngày'], y=df['COT Total'], name="Tổng đơn", marker_color='#bae6fd', opacity=0.8,
             text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']],
-            textposition='inside',
-            textangle=-90, 
-            insidetextanchor='end',
-            textfont=dict(size=16, color='#0f172a'),
-            insidetextfont=dict(size=16, color='#0f172a')
+            textposition='inside', textangle=-90, insidetextanchor='end',
+            textfont=dict(size=16, color='#0f172a'), insidetextfont=dict(size=16, color='#0f172a')
         ))
         
         fig_cot.add_trace(go.Scatter(
             x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", 
             line=dict(color='#059669', width=5, shape='spline'), mode='lines+markers+text',
             text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], 
-            textposition="top center", 
-            textfont=dict(size=18, color='#064e3b', weight='bold')
+            textposition="top center", textfont=dict(size=18, color='#064e3b', weight='bold')
         ))
         
         fig_cot = clean_layout(fig_cot, "% Sent Volume Ontime | 准时出库率 %")
         fig_cot.update_layout(
-            height=500, 
-            showlegend=False, 
+            height=500, showlegend=False, 
             yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')),
             uniformtext=dict(minsize=14, mode='show') 
         )
         st.plotly_chart(fig_cot, use_container_width=True)
 
-    # Dòng 2: TRỄ XE & BACKLOG
     col_l1, col_l2, col_l3 = st.columns([1, 1, 1.2])
     with col_l1:
         fig_sh_late = go.Figure()
@@ -460,7 +439,6 @@ def render_dashboard(df, summary, primary_color):
         fig_bl.update_layout(height=400, uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_bl, use_container_width=True)
 
-    # 5. CHI TIẾT DỮ LIỆU THÔ
     with st.expander("🔍 Chi tiết dữ liệu thô | 详细数据"):
         df_display = df.copy()
         for col in df_display.columns:
