@@ -12,16 +12,17 @@ st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initia
 st.markdown("""<style>
     /* --- ÉP CHẾ ĐỘ NỀN SÁNG (LIGHT MODE) CỐ ĐỊNH --- */
     .stApp, [data-testid="stAppViewContainer"] { background-color: #f8fafc !important; }
-    .stMarkdown, p, span, div { color: #1e293b !important; }
+    
+    /* Chỉnh màu chữ cho các Tab (Bắc Ninh / HCM) */
     button[data-baseweb="tab"] div { color: #1e3a8a !important; font-weight: bold !important; }
     
     /* --- ĐỊNH DẠNG BẢNG & GIAO DIỆN CHÍNH --- */
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
     .kpi-table th { background-color: #1e3a8a !important; color: #ffffff !important; padding: 14px 10px; text-align: center; border: 1px solid #94a3b8; font-size: 16px; font-weight: 800; }
-    .kpi-table td { padding: 12px 10px; border: 1px solid #cbd5e1; font-size: 16px; vertical-align: middle; color: #1e293b !important; }
+    .kpi-table td { padding: 12px 10px; border: 1px solid #cbd5e1; font-size: 16px; vertical-align: middle; color: #1e293b; }
     .col-pillar { font-weight: 800; text-align: center; background-color: #f1f5f9 !important; font-size: 17px; }
     .col-metric { font-weight: 700; color: #0f172a !important; }
-    .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 17px; font-weight: 700; color: #0f172a !important;}
+    .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 17px; font-weight: 700; }
     .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 19px; font-weight: 900; background-color: #dcfce7 !important; color: #166534 !important; }
     
     /* --- ĐỊNH DẠNG 6 Ô METRIC TRÊN CÙNG --- */
