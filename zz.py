@@ -10,36 +10,39 @@ import time
 # 1. CẤU HÌNH TRANG & CSS TÙY CHỈNH
 st.set_page_config(page_title="J&T Cargo - KPI Dashboard", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""<style>
-    /* --- STYLE ĐỊNH DẠNG BẢNG & GIAO DIỆN CỦA ÔNG --- */
+    /* --- ÉP CHẾ ĐỘ NỀN SÁNG (LIGHT MODE) CỐ ĐỊNH --- */
+    .stApp, [data-testid="stAppViewContainer"] { background-color: #f8fafc !important; }
+    .stMarkdown, p, span, div { color: #1e293b !important; }
+    button[data-baseweb="tab"] div { color: #1e3a8a !important; font-weight: bold !important; }
+    
+    /* --- ĐỊNH DẠNG BẢNG & GIAO DIỆN CHÍNH --- */
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
-    .kpi-table th { background-color: #1e3a8a; color: #ffffff; padding: 14px 10px; text-align: center; border: 1px solid #94a3b8; font-size: 16px; font-weight: 800; }
-    .kpi-table td { padding: 12px 10px; border: 1px solid #cbd5e1; font-size: 16px; vertical-align: middle; color: #1e293b; }
-    .col-pillar { font-weight: 800; text-align: center; background-color: #f1f5f9; font-size: 17px; }
-    .col-metric { font-weight: 700; color: #0f172a; }
-    .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 17px; font-weight: 700; color: #0f172a;}
-    .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 19px; font-weight: 900; background-color: #dcfce7; color: #166534; }
-    div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.08); transition: transform 0.2s ease-in-out; border-left: 5px solid #2563eb; }
+    .kpi-table th { background-color: #1e3a8a !important; color: #ffffff !important; padding: 14px 10px; text-align: center; border: 1px solid #94a3b8; font-size: 16px; font-weight: 800; }
+    .kpi-table td { padding: 12px 10px; border: 1px solid #cbd5e1; font-size: 16px; vertical-align: middle; color: #1e293b !important; }
+    .col-pillar { font-weight: 800; text-align: center; background-color: #f1f5f9 !important; font-size: 17px; }
+    .col-metric { font-weight: 700; color: #0f172a !important; }
+    .col-num { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 17px; font-weight: 700; color: #0f172a !important;}
+    .col-mtd { text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 19px; font-weight: 900; background-color: #dcfce7 !important; color: #166534 !important; }
+    
+    /* --- ĐỊNH DẠNG 6 Ô METRIC TRÊN CÙNG --- */
+    div[data-testid="metric-container"] { background-color: #ffffff !important; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.08); transition: transform 0.2s ease-in-out; border-left: 5px solid #2563eb; }
     div[data-testid="metric-container"]:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.15); }
     div[data-testid="metric-container"] label { font-size: 17px !important; font-weight: 700 !important; color: #334155 !important; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 36px !important; font-weight: 900 !important; color: #1e3a8a !important; }
-    .main-title { text-align: center; font-weight: 900; color: #0f172a; font-size: 46px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+    .main-title { text-align: center; font-weight: 900; color: #0f172a !important; font-size: 46px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
     
-    /* --- ĐOẠN CSS BƠM THÊM ĐỂ BẢO VỆ CHẤT XÁM (ẨN NÚT GITHUB, MENU) --- */
-    #MainMenu {visibility: hidden;} /* Ẩn menu chính */
-    header {visibility: hidden;} /* Ẩn toàn bộ thanh header chứa nút Fork/Github */
-    footer {visibility: hidden;} /* Ẩn chữ Made with Streamlit ở cuối trang */
-    [data-testid="stToolbar"] {visibility: hidden !important;} /* Đảm bảo ẩn thanh công cụ góc phải */
+    /* --- ẨN NÚT GITHUB, MENU ĐỂ BẢO VỆ CHẤT XÁM --- */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    [data-testid="stToolbar"] {visibility: hidden !important;}
 </style>""", unsafe_allow_html=True)
 
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU 
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
-        
-        # LƯU Ý BẢO MẬT: Ông đang để lộ App ID và Secret Key ở đây. 
-        # Tạm thời tôi giữ nguyên để code chạy được, nhưng ông nên dùng st.secrets sau này nhé.
         payload = {"app_id": "cli_a9456e412bb89bce", "app_secret": "BwSAuHHsv2woEdIGTqJoKboH6i1i7qBB"}
-        
         r = requests.post(url, json=payload, timeout=10)
         return r.json().get("tenant_access_token")
     except Exception as e: 
