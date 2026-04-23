@@ -205,8 +205,11 @@ if df_hcm.empty and df_bn.empty and df_sh.empty:
     st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
     st.stop()
 
-# THÊM TAB 3 CHO SH DC
-tab1, tab2, tab3 = st.tabs(["📌 HỒ CHÍ MINH HUB", "📌 BẮC NINH HUB", "📌 SH DC"])
+# THÊM TỔNG CỘNG 6 TAB CHO CẢ LOẠI 3 NGÀY VÀ 7 NGÀY
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📌 HỒ CHÍ MINH (3 NGÀY)", "📌 BẮC NINH (3 NGÀY)", "📌 SH DC (3 NGÀY)",
+    "📅 HỒ CHÍ MINH (7 NGÀY)", "📅 BẮC NINH (7 NGÀY)", "📅 SH DC (7 NGÀY)"
+])
 
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
@@ -257,26 +260,29 @@ def clean_layout(fig, title):
     fig.update_traces(cliponaxis=False)
     return fig
 
-def render_dashboard(df, summary, primary_color):
+# ĐÃ BỔ SUNG THAM SỐ days_to_show ĐỂ LINH HOẠT RENDER 3 NGÀY HOẶC 7 NGÀY
+def render_dashboard(df, summary, primary_color, days_to_show=3):
     if df.empty: return
     
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
-    last_4 = valid_df.tail(4).reset_index(drop=True)
     
-    pad_len = 4 - len(last_4)
-    d_names = ["-"] * pad_len + last_4['Ngày'].tolist()
-    d_display = d_names[1:4] 
+    # Thay vì lấy cố định 4 dòng, ta lấy linh hoạt dựa vào số ngày cần hiển thị
+    last_n = valid_df.tail(days_to_show + 1).reset_index(drop=True)
+    
+    pad_len = (days_to_show + 1) - len(last_n)
+    d_names = ["-"] * pad_len + last_n['Ngày'].tolist()
+    d_display = d_names[1 : days_to_show + 1] 
 
     def get_d(col_name, is_pct=False, inverse=False):
-        vals_4 = [np.nan] * pad_len + last_4[col_name].tolist()
+        vals_n = [np.nan] * pad_len + last_n[col_name].tolist()
         display_strs = []
         
         base_style = "font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 17px; font-weight: 700;"
         
-        for i in range(1, 4):
-            cur = vals_4[i]
-            prev = vals_4[i-1]
+        for i in range(1, days_to_show + 1):
+            cur = vals_n[i]
+            prev = vals_n[i-1]
             
             if pd.isna(cur) or str(cur).strip() == "":
                 display_strs.append("")
@@ -301,7 +307,12 @@ def render_dashboard(df, summary, primary_color):
             
             display_strs.append(cur_str)
             
-        return f"<td class='col-num' style='background-color: #f8fafc;'>{display_strs[0]}</td><td class='col-num' style='background-color: #f1f5f9;'>{display_strs[1]}</td><td class='col-num' style='background-color: #e2e8f0;'>{display_strs[2]}</td>"
+        # Vòng lặp in ra linh hoạt số lượng thẻ TD (3 cột hoặc 7 cột)
+        td_html = ""
+        for idx, ds in enumerate(display_strs):
+            bg = "#f8fafc" if idx % 2 == 0 else "#f1f5f9"
+            td_html += f"<td class='col-num' style='background-color: {bg};'>{ds}</td>"
+        return td_html
 
     t_vin = df['Inbound Vol'].sum(skipna=True) 
     t_vout = df['Outbound Vol'].sum(skipna=True) 
@@ -330,6 +341,9 @@ def render_dashboard(df, summary, primary_color):
     c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # Dynamic headers cho bảng
+    headers_html = "".join([f"<th style='background-color: #2563eb;'>{d}</th>" for d in d_display])
+
     st.markdown(f"""<table class="kpi-table">
         <thead>
             <tr>
@@ -339,9 +353,7 @@ def render_dashboard(df, summary, primary_color):
                 <th>Tuần này | 本周</th>
                 <th>Tuần trước | 上周</th>
                 <th>MTD | 累计</th>
-                <th style="background-color: #3b82f6;">{d_display[0]}</th>
-                <th style="background-color: #2563eb;">{d_display[1]}</th>
-                <th style="background-color: #1d4ed8;">{d_display[2]}</th>
+                {headers_html}
             </tr>
         </thead>
         <tbody>
@@ -463,10 +475,16 @@ def render_dashboard(df, summary, primary_color):
             df_display[col] = df_display[col].apply(lambda x: clean_format(x, "%" in col))
         st.dataframe(df_display.set_index("Ngày").T, use_container_width=True)
 
-# GỌI HÀM RENDER CHO 3 TAB VỚI 3 MÀU KHÁC NHAU
+# GỌI HÀM RENDER CHO 6 TAB TƯƠNG ỨNG
 with tab1:
-    render_dashboard(df_hcm, sum_hcm, "#0284c7") # Xanh dương
+    render_dashboard(df_hcm, sum_hcm, "#0284c7", days_to_show=3)
 with tab2:
-    render_dashboard(df_bn, sum_bn, "#059669")  # Xanh lá
+    render_dashboard(df_bn, sum_bn, "#059669", days_to_show=3)
 with tab3:
-    render_dashboard(df_sh, sum_sh, "#8b5cf6")  # Tím (Dành cho SH DC)
+    render_dashboard(df_sh, sum_sh, "#8b5cf6", days_to_show=3)
+with tab4:
+    render_dashboard(df_hcm, sum_hcm, "#0284c7", days_to_show=7)
+with tab5:
+    render_dashboard(df_bn, sum_bn, "#059669", days_to_show=7)
+with tab6:
+    render_dashboard(df_sh, sum_sh, "#8b5cf6", days_to_show=7)
