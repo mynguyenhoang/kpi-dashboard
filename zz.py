@@ -14,7 +14,7 @@ st.markdown("""<style>
     .stApp, [data-testid="stAppViewContainer"] { background-color: #f8fafc !important; }
     
     /* Chỉnh màu chữ cho các Tab */
-    button[data-baseweb="tab"] div { color: #1e3a8a !important; font-weight: bold !important; font-size: 16px !important; }
+    button[data-baseweb="tab"] div { color: #1e3a8a !important; font-weight: bold !important; font-size: 15px !important; }
     
     /* --- ĐỊNH DẠNG BẢNG & GIAO DIỆN CHÍNH --- */
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
@@ -39,7 +39,9 @@ st.markdown("""<style>
     [data-testid="stToolbar"] {visibility: hidden !important;}
 </style>""", unsafe_allow_html=True)
 
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU 
+# =====================================================================
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN 100% LOGIC CỦA BẠN)
+# =====================================================================
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -90,7 +92,7 @@ def get_data():
         st.error("🔴 File Feishu đang trống rỗng không có dữ liệu!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
     if len(vals) < 75: 
-        st.error(f"🔴 Cấu trúc file bị lỗi! Cần ít nhất 75 dòng để đọc.")
+        st.error(f"🔴 Cấu trúc file bị lỗi! Cần ít nhất 75 dòng để đọc, nhưng hiện tại file chỉ có {len(vals)} dòng. Có ai đó đã lỡ xóa dòng rồi!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
     def clean_val(row_idx, col_idx):
@@ -154,9 +156,35 @@ def get_data():
             data["LH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(lh_c_list, lh_t_list)]
             data["SH Rate (%)"] = [(c - (t if pd.notna(t) else 0)) / c * 100 if pd.notna(c) and c > 0 else np.nan for c, t in zip(sh_c_list, sh_t_list)]
 
-            weekly_summary = {} # Giữ nguyên cấu trúc trả về nhưng không dùng tới nữa
+            valid_weeks = [idx for idx in weekly_col_idxs if pd.notna(clean_val(vin_idx, idx)) and clean_val(vin_idx, idx) > 0]
+            cw_idx = valid_weeks[-1] if len(valid_weeks) >= 1 else -1
+            pw_idx = valid_weeks[-2] if len(valid_weeks) >= 2 else -1
+
+            def get_rate(num_idx, den_idx, col_idx):
+                if col_idx == -1: return 0
+                n = clean_val(num_idx, col_idx)
+                d = clean_val(den_idx, col_idx)
+                return (n / d * 100) if (d and d > 0) else 0
+
+            weekly_summary = {
+                "cw_vin": clean_val(vin_idx, cw_idx) if cw_idx != -1 else 0, "pw_vin": clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_vout": clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0, "pw_vout": clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0, "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_ms": clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0, "pw_ms": clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_bl": clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0, "pw_bl": clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0, "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
+                
+                "cw_lhot": ((clean_val(lhc_idx, cw_idx) - clean_val(lht_idx, cw_idx)) / clean_val(lhc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(lhc_idx, cw_idx) > 0 else 0,
+                "pw_lhot": ((clean_val(lhc_idx, pw_idx) - clean_val(lht_idx, pw_idx)) / clean_val(lhc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(lhc_idx, pw_idx) > 0 else 0,
+                "cw_shot": ((clean_val(shc_idx, cw_idx) - clean_val(sht_idx, cw_idx)) / clean_val(shc_idx, cw_idx) * 100) if cw_idx != -1 and clean_val(shc_idx, cw_idx) > 0 else 0,
+                "pw_shot": ((clean_val(shc_idx, pw_idx) - clean_val(sht_idx, pw_idx)) / clean_val(shc_idx, pw_idx) * 100) if pw_idx != -1 and clean_val(shc_idx, pw_idx) > 0 else 0,
+                
+                "cw_cot": get_rate(cot_ontime_idx, cot_total_idx, cw_idx),
+                "pw_cot": get_rate(cot_ontime_idx, cot_total_idx, pw_idx),
+            }
             return pd.DataFrame(data), weekly_summary
 
+        # MAPPING INDEX THEO LOG MỚI
         data_hcm = extract_hub_data(4, 5, 6, 7, 8, 9, 23, 24, 42, shc_idx=50, sht_idx=52, lhc_idx=51, lht_idx=53, cot_total_idx=47, cot_ontime_idx=48)
         data_bn = extract_hub_data(10, 11, 12, 13, 14, 15, 25, 26, 43, shc_idx=59, sht_idx=61, lhc_idx=60, lht_idx=62, cot_total_idx=56, cot_ontime_idx=57)
         data_sh = extract_hub_data(16, 17, 18, 19, 20, 21, 27, 28, 44, shc_idx=68, sht_idx=70, lhc_idx=69, lht_idx=71, cot_total_idx=65, cot_ontime_idx=66)
@@ -164,27 +192,44 @@ def get_data():
         return data_hcm, data_bn, data_sh
         
     except Exception as e:
-        st.error(f"🔴 Lỗi khi xử lý dữ liệu từ file: {str(e)}.")
+        st.error(f"🔴 Lỗi khi xử lý dữ liệu từ file: {str(e)}. Cấu trúc file có thể đã bị thay đổi (xóa dòng/cột)!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
-# 3. GIAO DIỆN CHÍNH
-st.markdown("<div class='main-title'>J&T CARGO KPI DASHBOARD</div>", unsafe_allow_html=True)
-data_hcm, data_bn, data_sh = get_data()
-
-df_hcm, _ = data_hcm
-df_bn, _ = data_bn
-df_sh, _ = data_sh
-
-if df_hcm.empty and df_bn.empty and df_sh.empty:
-    st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
-    st.stop()
-
-# ĐÚNG 3 TABS NHƯ YÊU CẦU
-tab1, tab2, tab3 = st.tabs(["📌 HỒ CHÍ MINH", "📌 BẮC NINH", "📌 SH DC"])
-
+# =====================================================================
+# 3. GIAO DIỆN & RENDER 
+# =====================================================================
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
+
+def get_wow_cell(cur, prev, is_pct=False, inverse=False):
+    if pd.isna(cur) and pd.isna(prev):
+        return f"<td style='text-align: center;'></td><td class='col-num'></td><td class='col-num'></td>"
+        
+    if pd.isna(prev) or (prev == 0 and not is_pct):
+        cur_str = f"{cur:.2f}%" if is_pct and pd.notna(cur) else format_vietnam(cur)
+        if pd.isna(cur): cur_str = ""
+        return f"<td style='text-align: center; font-size: 16px;'>-</td><td class='col-num'>{cur_str}</td><td class='col-num'>-</td>"
+        
+    if pd.isna(cur):
+        prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
+        return f"<td style='text-align: center; font-size: 16px;'>-</td><td class='col-num'>-</td><td class='col-num'>{prev_str}</td>"
+
+    diff = cur - prev
+    pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
+    
+    if diff > 0:
+        bg_color, text_color, sign = "#dcfce7", "#15803d", "+"
+        if inverse: bg_color, text_color = "#fee2e2", "#b91c1c"
+    elif diff < 0:
+        bg_color, text_color, sign = "#fee2e2", "#b91c1c", ""
+        if inverse: bg_color, text_color = "#dcfce7", "#15803d"
+    else: bg_color, text_color, sign = "transparent", "#1e293b", ""
+    
+    wow_str = f"{sign}{pct:.1f}%" if not is_pct else f"{sign}{diff:.1f}%"
+    cur_str = f"{cur:.2f}%" if is_pct else format_vietnam(cur)
+    prev_str = f"{prev:.2f}%" if is_pct else format_vietnam(prev)
+    return f"<td style='background-color: {bg_color}; color: {text_color}; font-weight: 900; text-align: center; font-size: 17px;'>{wow_str}</td><td class='col-num'>{cur_str}</td><td class='col-num'>{prev_str}</td>"
 
 def clean_layout(fig, title):
     fig.update_layout(
@@ -197,23 +242,23 @@ def clean_layout(fig, title):
     fig.update_traces(cliponaxis=False)
     return fig
 
-# HÀM RENDER CHỈ HIỂN THỊ 7 NGÀY & ĐÃ BỎ 3 CỘT WOW/TUẦN
-def render_dashboard(df, primary_color, tab_key, days_to_show=7):
+# Hàm render tổng hợp cho cả trường hợp bật/tắt cột WOW và hiển thị bao nhiêu ngày
+def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_wow=True):
     if df.empty: return
     
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
     
-    # Lấy thêm 1 ngày để tính toán mũi tên tăng/giảm trong bảng (8 dòng)
+    # Số lượng dữ liệu kéo cho Bảng (cần lấy thêm 1 ngày để tính diff cho ngày xa nhất)
     n_fetch = days_to_show + 1
     last_n = valid_df.tail(n_fetch).reset_index(drop=True)
     
-    # Dataframe dành riêng cho Biểu đồ (đúng 7 ngày)
+    # Dữ liệu riêng biệt dành cho Chart (Đúng số ngày yêu cầu)
     chart_df = valid_df.tail(days_to_show).reset_index(drop=True)
     
     pad_len = n_fetch - len(last_n)
     d_names_padded = ["-"] * pad_len + last_n['Ngày'].tolist()
-    d_display = d_names_padded[1:] # 7 cột ngày cho bảng
+    d_display = d_names_padded[1:] # Tên header các cột Ngày trong bảng
 
     def get_d(col_name, is_pct=False, inverse=False):
         vals_padded = [np.nan] * pad_len + last_n[col_name].tolist()
@@ -248,7 +293,7 @@ def render_dashboard(df, primary_color, tab_key, days_to_show=7):
             display_strs.append(cur_str)
             
         td_html = ""
-        bg_colors = ["#f8fafc", "#f1f5f9", "#e2e8f0"]
+        bg_colors = ["#f8fafc", "#f1f5f9", "#e2e8f0", "#f8fafc", "#f1f5f9", "#e2e8f0", "#f8fafc"]
         for idx, s in enumerate(display_strs):
             bg = bg_colors[idx % len(bg_colors)]
             td_html += f"<td class='col-num' style='background-color: {bg};'>{s}</td>"
@@ -282,37 +327,46 @@ def render_dashboard(df, primary_color, tab_key, days_to_show=7):
     st.markdown("<br>", unsafe_allow_html=True)
 
     header_html = ""
-    header_bg = ["#3b82f6", "#2563eb", "#1d4ed8"]
+    header_bg = ["#3b82f6", "#2563eb", "#1d4ed8", "#3b82f6", "#2563eb", "#1d4ed8", "#3b82f6"]
     for idx, d in enumerate(d_display):
         bg = header_bg[idx % len(header_bg)]
         header_html += f"<th style='background-color: {bg};'>{d}</th>"
 
-    # HTML BẢNG MỚI ĐÃ LOẠI BỎ 3 CỘT (WOW, TUẦN NÀY, TUẦN TRƯỚC)
+    # KIỂM TRA BIẾN show_wow ĐỂ THÊM/BỚT 3 CỘT TRONG BẢNG
+    wow_header_cols = """
+                <th style="width: 100px;">WOW | 环比</th>
+                <th>Tuần này | 本周</th>
+                <th>Tuần trước | 上周</th>
+    """ if show_wow else ""
+
+    def w_cell(cur, prev, is_pct=False, inverse=False):
+        return get_wow_cell(cur, prev, is_pct, inverse) if show_wow else ""
+
     st.markdown(f"""<table class="kpi-table">
         <thead>
             <tr>
                 <th>KPI</th>
                 <th style="width: 20%;">Hạng mục | 指标名称</th>
+                {wow_header_cols}
                 <th>MTD | 累计</th>
                 {header_html}
             </tr>
         </thead>
         <tbody>
-            <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td><td class="col-mtd">{format_vietnam(t_vin)}</td>{get_d('Inbound Vol')}</tr>
-            <tr><td class="col-metric">Outbound (đơn) | 出库单量</td><td class="col-mtd">{format_vietnam(t_vout)}</td>{get_d('Outbound Vol')}</tr>
-            <tr><td class="col-metric">Trọng lượng (kg) | 重量 kg</td><td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td>{get_d('Total Process Wgt')}</tr>
-            <tr><td rowspan="4" class="col-pillar" style="color:#dc2626;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td><td class="col-mtd">{format_vietnam(t_ms)}</td>{get_d('Missort', inverse=True)}</tr>
-            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td><td class="col-mtd">{format_vietnam(t_bl)}</td>{get_d('Backlog', inverse=True)}</tr>
-            <tr><td class="col-metric">Tổng đơn gửi đúng COT | 按COT准时出库的订单总量</td><td class="col-mtd">{format_vietnam(cot_ontime_mtd)}</td>{get_d('COT Ontime')}</tr>
-            <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td><td class="col-mtd">{cot_mtd:.1f}%</td>{get_d('COT Rate (%)', is_pct=True)}</tr>
-            <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehaul đúng cot (%) | 干线准时COT比例</td><td class="col-mtd">{lhot_mtd:.2f}%</td>{get_d('LH Rate (%)', is_pct=True)}</tr>
-            <tr><td class="col-metric">Tỷ lệ xe Shuttle đúng cot (%) | 摆渡准时COT率</td><td class="col-mtd">{shot_mtd:.2f}%</td>{get_d('SH Rate (%)', is_pct=True)}</tr>
+            <tr><td rowspan="3" class="col-pillar" style="color:#0284c7;">Sản Lượng | 生产</td><td class="col-metric">Inbound (đơn) | 入库单量</td>{w_cell(summary['cw_vin'], summary['pw_vin'])}<td class="col-mtd">{format_vietnam(t_vin)}</td>{get_d('Inbound Vol')}</tr>
+            <tr><td class="col-metric">Outbound (đơn) | 出库单量</td>{w_cell(summary['cw_vout'], summary['pw_vout'])}<td class="col-mtd">{format_vietnam(t_vout)}</td>{get_d('Outbound Vol')}</tr>
+            <tr><td class="col-metric">Trọng lượng (kg) | 重量 kg</td>{w_cell(summary['cw_tproc_wgt'], summary['pw_tproc_wgt'])}<td class="col-mtd">{format_vietnam(t_tproc_wgt)}</td>{get_d('Total Process Wgt')}</tr>
+            <tr><td rowspan="4" class="col-pillar" style="color:#dc2626;">Chất Lượng | 质量</td><td class="col-metric">Missort (đơn) | 错分单量</td>{w_cell(summary['cw_ms'], summary['pw_ms'], inverse=True)}<td class="col-mtd">{format_vietnam(t_ms)}</td>{get_d('Missort', inverse=True)}</tr>
+            <tr><td class="col-metric">Backlog (đơn) | 积压单量</td>{w_cell(summary['cw_bl'], summary['pw_bl'], inverse=True)}<td class="col-mtd">{format_vietnam(t_bl)}</td>{get_d('Backlog', inverse=True)}</tr>
+            <tr><td class="col-metric">Tổng đơn gửi đúng COT | 按COT准时出库的订单总量</td>{w_cell(summary['cw_cot_ontime'], summary['pw_cot_ontime'])}<td class="col-mtd">{format_vietnam(cot_ontime_mtd)}</td>{get_d('COT Ontime')}</tr>
+            <tr><td class="col-metric">% Sent Volume Ontime | 准时出库 %</td>{w_cell(summary['cw_cot'], summary['pw_cot'], is_pct=True)}<td class="col-mtd">{cot_mtd:.1f}%</td>{get_d('COT Rate (%)', is_pct=True)}</tr>
+            <tr><td rowspan="2" class="col-pillar" style="color:#059669;">Vận Tải | 运输</td><td class="col-metric"> Tỷ lệ xe linehaul đúng cot (%) | 干线准时COT比例</td>{w_cell(summary['cw_lhot'], summary['pw_lhot'], is_pct=True)}<td class="col-mtd">{lhot_mtd:.2f}%</td>{get_d('LH Rate (%)', is_pct=True)}</tr>
+            <tr><td class="col-metric">Tỷ lệ xe Shuttle đúng cot (%) | 摆渡准时COT率</td>{w_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td>{get_d('SH Rate (%)', is_pct=True)}</tr>
         </tbody></table>""", unsafe_allow_html=True)
 
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 30px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>1. Sản Lượng & Năng Suất | 生产与产能</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1.2, 1, 1])
     
-    # CHARTS ĐÃ ĐƯỢC CHỈNH ĐỂ CHỈ LẤY DỮ LIỆU CỦA 7 NGÀY (chart_df)
     with col1:
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Scatter(x=chart_df['Ngày'], y=chart_df['Inbound Vol'], name="Inbound | 入库", fill='tozeroy', mode='lines+text', 
@@ -403,7 +457,7 @@ def render_dashboard(df, primary_color, tab_key, days_to_show=7):
         fig_bl.update_layout(height=400, uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_bl, use_container_width=True, key=f"bl_{tab_key}")
 
-    with st.expander("🔍 Chi tiết dữ liệu thô (Toàn bộ dữ liệu) | 详细数据"):
+    with st.expander("🔍 Chi tiết dữ liệu thô | 详细数据"):
         df_display = df.copy()
         for col in df_display.columns:
             if col == "Ngày": continue
@@ -417,10 +471,35 @@ def render_dashboard(df, primary_color, tab_key, days_to_show=7):
             df_display[col] = df_display[col].apply(lambda x: clean_format(x, "%" in col))
         st.dataframe(df_display.set_index("Ngày").T, use_container_width=True)
 
-# GỌI HÀM RENDER CHO 3 TAB
+# GỌI MAIN APP CHẠY RA 6 TABS CHÍNH XÁC YÊU CẦU
+st.markdown("<div class='main-title'>J&T CARGO KPI DASHBOARD</div>", unsafe_allow_html=True)
+data_hcm, data_bn, data_sh = get_data()
+
+df_hcm, sum_hcm = data_hcm
+df_bn, sum_bn = data_bn
+df_sh, sum_sh = data_sh
+
+if df_hcm.empty and df_bn.empty and df_sh.empty:
+    st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
+    st.stop()
+
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📌 HCM (3 NGÀY)", "📌 BN (3 NGÀY)", "📌 SH (3 NGÀY)", 
+    "📅 HCM (7 NGÀY)", "📅 BN (7 NGÀY)", "📅 SH (7 NGÀY)"
+])
+
+# NHÓM TAB 1 (3 NGÀY, CÓ 3 CỘT WOW)
 with tab1:
-    render_dashboard(df_hcm, primary_color="#0284c7", tab_key="hcm", days_to_show=7)
+    render_dashboard(df_hcm, sum_hcm, "#0284c7", tab_key="hcm_3", days_to_show=3, show_wow=True)
 with tab2:
-    render_dashboard(df_bn, primary_color="#059669", tab_key="bn", days_to_show=7)
+    render_dashboard(df_bn, sum_bn, "#059669", tab_key="bn_3", days_to_show=3, show_wow=True)
 with tab3:
-    render_dashboard(df_sh, primary_color="#8b5cf6", tab_key="sh", days_to_show=7)
+    render_dashboard(df_sh, sum_sh, "#8b5cf6", tab_key="sh_3", days_to_show=3, show_wow=True)
+
+# NHÓM TAB 2 (7 NGÀY, KHÔNG CÓ 3 CỘT WOW)
+with tab4:
+    render_dashboard(df_hcm, sum_hcm, "#0284c7", tab_key="hcm_7", days_to_show=7, show_wow=False)
+with tab5:
+    render_dashboard(df_bn, sum_bn, "#059669", tab_key="bn_7", days_to_show=7, show_wow=False)
+with tab6:
+    render_dashboard(df_sh, sum_sh, "#8b5cf6", tab_key="sh_7", days_to_show=7, show_wow=False)
