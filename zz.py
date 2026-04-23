@@ -59,7 +59,7 @@ def get_data():
         
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
-    max_retries = 3
+    max_retries = 5  # Đã tăng lên 5 lần thử
     res_data = None
     
     for attempt in range(max_retries):
@@ -70,7 +70,7 @@ def get_data():
                 break
             elif "not ready" in str(res.get("msg")).lower():
                 if attempt < max_retries - 1:
-                    time.sleep(2)
+                    time.sleep(5)  # Đã tăng thời gian chờ lên 5 giây mỗi lần
                     continue
                 else: 
                     st.error("🔴 API Feishu báo 'Not ready' quá lâu.")
