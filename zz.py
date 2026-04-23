@@ -14,7 +14,7 @@ st.markdown("""<style>
     .stApp, [data-testid="stAppViewContainer"] { background-color: #f8fafc !important; }
     
     /* Chỉnh màu chữ cho các Tab */
-    button[data-baseweb="tab"] div { color: #1e3a8a !important; font-weight: bold !important; font-size: 15px !important; }
+    button[data-baseweb="tab"] div { color: #1e3a8a !important; font-weight: bold !important; }
     
     /* --- ĐỊNH DẠNG BẢNG & GIAO DIỆN CHÍNH --- */
     .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
@@ -39,9 +39,7 @@ st.markdown("""<style>
     [data-testid="stToolbar"] {visibility: hidden !important;}
 </style>""", unsafe_allow_html=True)
 
-# =====================================================================
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN 100% LOGIC CỦA BẠN)
-# =====================================================================
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (GIỮ NGUYÊN 100% CỦA BẠN)
 def get_tenant_access_token():
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -195,9 +193,24 @@ def get_data():
         st.error(f"🔴 Lỗi khi xử lý dữ liệu từ file: {str(e)}. Cấu trúc file có thể đã bị thay đổi (xóa dòng/cột)!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
-# =====================================================================
-# 3. GIAO DIỆN & RENDER 
-# =====================================================================
+# 3. GIAO DIỆN CHÍNH
+st.markdown("<div class='main-title'>J&T CARGO KPI DASHBOARD</div>", unsafe_allow_html=True)
+data_hcm, data_bn, data_sh = get_data()
+
+df_hcm, sum_hcm = data_hcm
+df_bn, sum_bn = data_bn
+df_sh, sum_sh = data_sh
+
+if df_hcm.empty and df_bn.empty and df_sh.empty:
+    st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
+    st.stop()
+
+# ĐÃ CHIA LÀM 6 TAB NHƯ YÊU CẦU
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📌 HỒ CHÍ MINH HUB (3 NGÀY)", "📌 BẮC NINH HUB (3 NGÀY)", "📌 SH DC (3 NGÀY)",
+    "📅 HỒ CHÍ MINH HUB (7 NGÀY)", "📅 BẮC NINH HUB (7 NGÀY)", "📅 SH DC (7 NGÀY)"
+])
+
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
     return f"{number:,.0f}".replace(",", ".")
@@ -235,21 +248,26 @@ def clean_layout(fig, title):
     fig.update_layout(
         title=dict(text=title, font=dict(size=26, weight='bold', color='#1e3a8a')),
         plot_bgcolor='white', paper_bgcolor='white', margin=dict(t=70, b=30, l=10, r=10),
-        xaxis=dict(showgrid=False, tickfont=dict(size=14, color='#1e293b', weight='bold'), tickmode='linear', tickangle=-45),
+        xaxis=dict(
+            showgrid=False, 
+            tickfont=dict(size=14, color='#1e293b', weight='bold'),
+            tickmode='linear', 
+            tickangle=-45 
+        ),
         yaxis=dict(showgrid=True, gridcolor='#e2e8f0', tickfont=dict(size=16, color='#1e293b', weight='bold'), zeroline=False),
         hoverlabel=dict(font_size=18)
     )
     fig.update_traces(cliponaxis=False)
     return fig
 
-# Hàm render tổng hợp cho cả trường hợp bật/tắt cột WOW và hiển thị bao nhiêu ngày
+# HÀM RENDER ĐÃ ĐƯỢC TỐI ƯU CHO CẢ 3 NGÀY (CÓ WOW) VÀ 7 NGÀY (BỎ WOW)
 def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_wow=True):
     if df.empty: return
     
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
     
-    # Số lượng dữ liệu kéo cho Bảng (cần lấy thêm 1 ngày để tính diff cho ngày xa nhất)
+    # Số lượng dữ liệu kéo cho Bảng (cần lấy thêm 1 ngày để tính diff cho mũi tên tăng/giảm)
     n_fetch = days_to_show + 1
     last_n = valid_df.tail(n_fetch).reset_index(drop=True)
     
@@ -258,11 +276,12 @@ def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_w
     
     pad_len = n_fetch - len(last_n)
     d_names_padded = ["-"] * pad_len + last_n['Ngày'].tolist()
-    d_display = d_names_padded[1:] # Tên header các cột Ngày trong bảng
+    d_display = d_names_padded[1:] 
 
     def get_d(col_name, is_pct=False, inverse=False):
         vals_padded = [np.nan] * pad_len + last_n[col_name].tolist()
         display_strs = []
+        
         base_style = "font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 17px; font-weight: 700;"
         
         for i in range(1, n_fetch):
@@ -293,7 +312,7 @@ def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_w
             display_strs.append(cur_str)
             
         td_html = ""
-        bg_colors = ["#f8fafc", "#f1f5f9", "#e2e8f0", "#f8fafc", "#f1f5f9", "#e2e8f0", "#f8fafc"]
+        bg_colors = ["#f8fafc", "#f1f5f9", "#e2e8f0"]
         for idx, s in enumerate(display_strs):
             bg = bg_colors[idx % len(bg_colors)]
             td_html += f"<td class='col-num' style='background-color: {bg};'>{s}</td>"
@@ -327,12 +346,12 @@ def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_w
     st.markdown("<br>", unsafe_allow_html=True)
 
     header_html = ""
-    header_bg = ["#3b82f6", "#2563eb", "#1d4ed8", "#3b82f6", "#2563eb", "#1d4ed8", "#3b82f6"]
+    header_bg = ["#3b82f6", "#2563eb", "#1d4ed8"]
     for idx, d in enumerate(d_display):
         bg = header_bg[idx % len(header_bg)]
         header_html += f"<th style='background-color: {bg};'>{d}</th>"
 
-    # KIỂM TRA BIẾN show_wow ĐỂ THÊM/BỚT 3 CỘT TRONG BẢNG
+    # XỬ LÝ ẨN/HIỆN CỘT WOW VÀ TUẦN THEO YÊU CẦU
     wow_header_cols = """
                 <th style="width: 100px;">WOW | 环比</th>
                 <th>Tuần này | 本周</th>
@@ -364,9 +383,10 @@ def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_w
             <tr><td class="col-metric">Tỷ lệ xe Shuttle đúng cot (%) | 摆渡准时COT率</td>{w_cell(summary['cw_shot'], summary['pw_shot'], is_pct=True)}<td class="col-mtd">{shot_mtd:.2f}%</td>{get_d('SH Rate (%)', is_pct=True)}</tr>
         </tbody></table>""", unsafe_allow_html=True)
 
-    st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 30px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>1. Sản Lượng & Năng Suất | 生产与产能</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 40px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>1. Sản Lượng & Năng Suất | 生产与产能</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1.2, 1, 1])
     
+    # TẤT CẢ CHARTS ĐƯỢC CHỈ ĐỊNH DUY NHẤT BỞI KEY TRÁNH LỖI DUPLICATE STREAMLIT
     with col1:
         fig_vol = go.Figure()
         fig_vol.add_trace(go.Scatter(x=chart_df['Ngày'], y=chart_df['Inbound Vol'], name="Inbound | 入库", fill='tozeroy', mode='lines+text', 
@@ -471,32 +491,13 @@ def render_dashboard(df, summary, primary_color, tab_key, days_to_show=3, show_w
             df_display[col] = df_display[col].apply(lambda x: clean_format(x, "%" in col))
         st.dataframe(df_display.set_index("Ngày").T, use_container_width=True)
 
-# GỌI MAIN APP CHẠY RA 6 TABS CHÍNH XÁC YÊU CẦU
-st.markdown("<div class='main-title'>J&T CARGO KPI DASHBOARD</div>", unsafe_allow_html=True)
-data_hcm, data_bn, data_sh = get_data()
-
-df_hcm, sum_hcm = data_hcm
-df_bn, sum_bn = data_bn
-df_sh, sum_sh = data_sh
-
-if df_hcm.empty and df_bn.empty and df_sh.empty:
-    st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
-    st.stop()
-
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📌 HCM (3 NGÀY)", "📌 BN (3 NGÀY)", "📌 SH (3 NGÀY)", 
-    "📅 HCM (7 NGÀY)", "📅 BN (7 NGÀY)", "📅 SH (7 NGÀY)"
-])
-
-# NHÓM TAB 1 (3 NGÀY, CÓ 3 CỘT WOW)
+# PHÂN CHIA RÕ RÀNG 6 TAB NHƯ YÊU CẦU CỦA BẠN
 with tab1:
     render_dashboard(df_hcm, sum_hcm, "#0284c7", tab_key="hcm_3", days_to_show=3, show_wow=True)
 with tab2:
     render_dashboard(df_bn, sum_bn, "#059669", tab_key="bn_3", days_to_show=3, show_wow=True)
 with tab3:
     render_dashboard(df_sh, sum_sh, "#8b5cf6", tab_key="sh_3", days_to_show=3, show_wow=True)
-
-# NHÓM TAB 2 (7 NGÀY, KHÔNG CÓ 3 CỘT WOW)
 with tab4:
     render_dashboard(df_hcm, sum_hcm, "#0284c7", tab_key="hcm_7", days_to_show=7, show_wow=False)
 with tab5:
