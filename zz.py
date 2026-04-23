@@ -205,21 +205,8 @@ if df_hcm.empty and df_bn.empty and df_sh.empty:
     st.warning("Đang tải dữ liệu hoặc xảy ra lỗi (xem thông báo lỗi màu đỏ ở trên)...")
     st.stop()
 
-# HÀM LỌC 7 NGÀY GẦN NHẤT
-def get_last_7_days(df):
-    if df.empty: return df
-    valid_df = df.dropna(subset=['Inbound Vol'])
-    valid_df = valid_df[valid_df['Inbound Vol'] > 0]
-    if valid_df.empty: return df.tail(7).reset_index(drop=True)
-    last_idx = valid_df.index[-1]
-    start_idx = max(0, last_idx - 6)
-    return df.iloc[start_idx:last_idx+1].reset_index(drop=True)
-
-# THÊM TAB MỚI CHO 7 NGÀY
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📌 HỒ CHÍ MINH (MTD)", "📌 BẮC NINH (MTD)", "📌 SH DC (MTD)",
-    "⏱ HCM (7 NGÀY)", "⏱ BN (7 NGÀY)", "⏱ SH DC (7 NGÀY)"
-])
+# THÊM TAB 3 CHO SH DC
+tab1, tab2, tab3 = st.tabs(["📌 HỒ CHÍ MINH HUB", "📌 BẮC NINH HUB", "📌 SH DC"])
 
 def format_vietnam(number):
     if pd.isna(number) or number == "": return ""
@@ -270,7 +257,7 @@ def clean_layout(fig, title):
     fig.update_traces(cliponaxis=False)
     return fig
 
-def render_dashboard(df, summary, primary_color, period_label="MTD"):
+def render_dashboard(df, summary, primary_color):
     if df.empty: return
     
     valid_df = df.dropna(subset=['Inbound Vol'])
@@ -335,12 +322,12 @@ def render_dashboard(df, summary, primary_color, period_label="MTD"):
     cot_mtd = (df['COT Ontime'].sum() / df['COT Total'].sum() * 100) if df['COT Total'].sum() > 0 else 0
 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric(f"Inbound | 入库 ({period_label})", format_vietnam(t_vin))
-    c2.metric(f"Outbound | 出库 ({period_label})", format_vietnam(t_vout))
-    c3.metric(f"Tổng lượng hàng xử lý | 总处理量 ({period_label})", format_vietnam(t_tproc_vol))
-    c4.metric(f"Trọng lượng | 重量 (Kg)", format_vietnam(t_tproc_wgt))
-    c5.metric(f"Missort | 错分 ({period_label})", format_vietnam(t_ms))
-    c6.metric(f"Backlog | 积压 ({period_label})", format_vietnam(t_bl))
+    c1.metric("Inbound | 入库 (MTD)", format_vietnam(t_vin))
+    c2.metric("Outbound | 出库 (MTD)", format_vietnam(t_vout))
+    c3.metric("Tổng lượng hàng xử lý | 总处理量 (MTD)", format_vietnam(t_tproc_vol))
+    c4.metric("Trọng lượng | 重量 (Kg)", format_vietnam(t_tproc_wgt))
+    c5.metric("Missort | 错分 (MTD)", format_vietnam(t_ms))
+    c6.metric("Backlog | 积压 (MTD)", format_vietnam(t_bl))
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown(f"""<table class="kpi-table">
@@ -351,7 +338,7 @@ def render_dashboard(df, summary, primary_color, period_label="MTD"):
                 <th style="width: 100px;">WOW | 环比</th>
                 <th>Tuần này | 本周</th>
                 <th>Tuần trước | 上周</th>
-                <th>{period_label} | 累计</th>
+                <th>MTD | 累计</th>
                 <th style="background-color: #3b82f6;">{d_display[0]}</th>
                 <th style="background-color: #2563eb;">{d_display[1]}</th>
                 <th style="background-color: #1d4ed8;">{d_display[2]}</th>
@@ -476,18 +463,10 @@ def render_dashboard(df, summary, primary_color, period_label="MTD"):
             df_display[col] = df_display[col].apply(lambda x: clean_format(x, "%" in col))
         st.dataframe(df_display.set_index("Ngày").T, use_container_width=True)
 
-# --- 3 TABS GỐC (HIỂN THỊ MTD) ---
+# GỌI HÀM RENDER CHO 3 TAB VỚI 3 MÀU KHÁC NHAU
 with tab1:
-    render_dashboard(df_hcm, sum_hcm, "#0284c7", period_label="MTD")
+    render_dashboard(df_hcm, sum_hcm, "#0284c7") # Xanh dương
 with tab2:
-    render_dashboard(df_bn, sum_bn, "#059669", period_label="MTD") 
+    render_dashboard(df_bn, sum_bn, "#059669")  # Xanh lá
 with tab3:
-    render_dashboard(df_sh, sum_sh, "#8b5cf6", period_label="MTD") 
-
-# --- 3 TABS MỚI (HIỂN THỊ 7 NGÀY) ---
-with tab4:
-    render_dashboard(get_last_7_days(df_hcm), sum_hcm, "#0284c7", period_label="7 Ngày")
-with tab5:
-    render_dashboard(get_last_7_days(df_bn), sum_bn, "#059669", period_label="7 Ngày")
-with tab6:
-    render_dashboard(get_last_7_days(df_sh), sum_sh, "#8b5cf6", period_label="7 Ngày")
+    render_dashboard(df_sh, sum_sh, "#8b5cf6")  # Tím (Dành cho SH DC)
