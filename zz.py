@@ -214,8 +214,8 @@ def get_last_7_days(df):
     return df.iloc[start_idx:last_idx+1].reset_index(drop=True)
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📌 HỒ CHÍ MINH (MTD)", "📌 BẮC NINH (MTD)", "📌 SH DC (MTD)",
-    "⏱ HCM (7 NGÀY)", "⏱ BN (7 NGÀY)", "⏱ SH DC (7 NGÀY)"
+    " HỒ CHÍ MINH (MTD)", " BẮC NINH (MTD)", " SH DC (MTD)",
+    " HCM (7 NGÀY)", " BN (7 NGÀY)", " SH DC (7 NGÀY)"
 ])
 
 def format_vietnam(number):
