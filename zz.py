@@ -90,7 +90,7 @@ def get_data():
         st.error("🔴 File Feishu đang trống rỗng không có dữ liệu!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
     if len(vals) < 81: 
-        st.error(f"🔴 Cấu trúc file bị lỗi! Cần ít nhất 81 dòng để đọc hết data SH DC, hiện tại file chỉ có {len(vals)} dòng.")
+        st.error(f"🔴 Cấu trúc file bị lỗi! Cần ít nhất 81 dòng để đọc hết dữ liệu, hiện tại file chỉ có {len(vals)} dòng.")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
     def clean_val(row_idx, col_idx):
@@ -125,7 +125,7 @@ def get_data():
         else: start_col_idx = 6
         cols_to_scan = [start_col_idx + i for i in range(num_days)]
 
-        def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx, ms_idx, ms_rt_idx, bl_idx, shc_idx, sht_idx, lhc_idx, lht_idx, cot_total_idx, cot_ontime_idx):
+        def extract_hub_data(vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx, ms_idx, ms_rt_idx, bl_idx, shc_idx, sht_idx, lhc_idx, lht_idx, cot_total_idx, cot_ontime_idx, cot_total_1am_idx, cot_ontime_1am_idx, cot_rate_1am_idx):
             data = {"Ngày": [f"Ngày {i+1}" for i in range(num_days)]}
             data["Inbound Vol"] = [clean_val(vin_idx, c) for c in cols_to_scan]
             data["Outbound Vol"] = [clean_val(vout_idx, c) for c in cols_to_scan]
@@ -137,9 +137,18 @@ def get_data():
             data["Tỷ lệ Missort (%)"] = [clean_val(ms_rt_idx, c) for c in cols_to_scan] 
             data["Backlog"] = [clean_val(bl_idx, c) for c in cols_to_scan]
             
+            # COT Cả ngày
             data["COT Total"] = [clean_val(cot_total_idx, c) for c in cols_to_scan]
             data["COT Ontime"] = [clean_val(cot_ontime_idx, c) for c in cols_to_scan]
             data["COT Rate (%)"] = [(o / t * 100) if (t > 0) else np.nan for t, o in zip(data["COT Total"], data["COT Ontime"])]
+
+            # COT Mốc 1AM
+            data["COT 1AM Total"] = [clean_val(cot_total_1am_idx, c) for c in cols_to_scan]
+            data["COT 1AM Ontime"] = [clean_val(cot_ontime_1am_idx, c) for c in cols_to_scan]
+            data["COT 1AM Rate (%)"] = [
+                val if pd.notna(val) else ((o / t * 100) if (t > 0) else np.nan)
+                for t, o, val in zip(data["COT 1AM Total"], data["COT 1AM Ontime"], [clean_val(cot_rate_1am_idx, c) for c in cols_to_scan])
+            ]
 
             data["Shuttle Chuyến"] = [clean_val(shc_idx, c) for c in cols_to_scan]
             data["Linehaul Chuyến"] = [clean_val(lhc_idx, c) for c in cols_to_scan]
@@ -187,6 +196,7 @@ def get_data():
             vin_idx=4, vout_idx=5, win_idx=6, wout_idx=7, tproc_vol_idx=8, tproc_wgt_idx=9,
             ms_idx=23, ms_rt_idx=24, bl_idx=42,
             cot_total_idx=47, cot_ontime_idx=48,
+            cot_total_1am_idx=50, cot_ontime_1am_idx=51, cot_rate_1am_idx=52,
             shc_idx=53, lhc_idx=54, sht_idx=55, lht_idx=56
         )
         
@@ -194,6 +204,7 @@ def get_data():
             vin_idx=10, vout_idx=11, win_idx=12, wout_idx=13, tproc_vol_idx=14, tproc_wgt_idx=15,
             ms_idx=25, ms_rt_idx=26, bl_idx=43,
             cot_total_idx=59, cot_ontime_idx=60,
+            cot_total_1am_idx=62, cot_ontime_1am_idx=63, cot_rate_1am_idx=64,
             shc_idx=65, lhc_idx=66, sht_idx=67, lht_idx=68
         )
         
@@ -201,7 +212,8 @@ def get_data():
             vin_idx=16, vout_idx=17, win_idx=18, wout_idx=19, tproc_vol_idx=20, tproc_wgt_idx=21,
             ms_idx=27, ms_rt_idx=28, bl_idx=44,
             cot_total_idx=71, cot_ontime_idx=72,
-            shc_idx=77, lhc_idx=78, sht_idx=79, lht_idx=80  # Dòng 80 tương ứng Linehaul Late của SH DC
+            cot_total_1am_idx=74, cot_ontime_1am_idx=75, cot_rate_1am_idx=76,
+            shc_idx=77, lhc_idx=78, sht_idx=79, lht_idx=80  
         )
         
         return data_hcm, data_bn, data_sh
@@ -407,22 +419,31 @@ def render_dashboard(df, summary, primary_color, period_label="MTD", show_weekly
         st.plotly_chart(fig_prod_w, use_container_width=True)
 
     st.markdown(f"<h3 style='color: {primary_color}; font-weight: 900; font-size: 28px; margin-top: 40px; border-bottom: 3px solid {primary_color}; padding-bottom: 5px;'>2. Quản lý Vận Tải & COT | 运输与准时出库管理</h3>", unsafe_allow_html=True)
-    col_t1, col_t2 = st.columns(2) 
+    col_t1, col_t2, col_t3 = st.columns(3) 
     with col_t1:
         fig_trans = go.Figure()
         fig_trans.add_trace(go.Bar(x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle", marker_color='#3b82f6', text=[int(x) if x>0 else "" for x in df['Shuttle Chuyến']], textposition='inside', textfont=dict(size=16, color='white', weight='bold')))
         fig_trans.add_trace(go.Bar(x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul", marker_color='#f97316', text=[int(x) if x>0 else "" for x in df['Linehaul Chuyến']], textposition='inside', textfont=dict(size=16, color='white', weight='bold')))
-        fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle & Linehaul) | 总车次")
+        fig_trans = clean_layout(fig_trans, "Tổng số chuyến xe (Shuttle/LH) | 总车次")
         fig_trans.update_layout(barmode='stack', height=500, legend=dict(orientation="h", y=-0.2, font=dict(size=16)), uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_trans, use_container_width=True)
 
     with col_t2:
         fig_cot = go.Figure()
-        fig_cot.add_trace(go.Bar(x=df['Ngày'], y=df['COT Total'], name="Tổng đơn", marker_color='#bae6fd', opacity=0.8, text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']], textposition='inside', textangle=-90, insidetextanchor='end', textfont=dict(size=16, color='#0f172a'), insidetextfont=dict(size=16, color='#0f172a')))
-        fig_cot.add_trace(go.Scatter(x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", line=dict(color='#059669', width=5, shape='spline'), mode='lines+markers+text', text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], textposition="top center", textfont=dict(size=18, color='#064e3b', weight='bold')))
+        fig_cot.add_trace(go.Bar(x=df['Ngày'], y=df['COT Total'], name="Tổng đơn", marker_color='#bae6fd', opacity=0.8, text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']], textposition='inside', textangle=-90, insidetextanchor='end', textfont=dict(size=16, color='#0f172a')))
+        fig_cot.add_trace(go.Scatter(x=df['Keep_Ngay'] if 'Keep_Ngay' in df.columns else df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ", yaxis="y2", line=dict(color='#059669', width=5, shape='spline'), mode='lines+markers+text', text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT Rate (%)']], textposition="top center", textfont=dict(size=18, color='#064e3b', weight='bold')))
         fig_cot = clean_layout(fig_cot, "% Sent Volume Ontime | 准时出库率 %")
         fig_cot.update_layout(height=500, showlegend=False, yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')), uniformtext=dict(minsize=14, mode='show'))
         st.plotly_chart(fig_cot, use_container_width=True)
+
+    # NEW CHART: SENT VOLUME ONTIME mốc 1AM
+    with col_t3:
+        fig_cot_1am = go.Figure()
+        fig_cot_1am.add_trace(go.Bar(x=df['Ngày'], y=df['COT 1AM Total'], name="Tổng đơn 1AM", marker_color='#fed7aa', opacity=0.8, text=[format_vietnam(x) if pd.notna(x) and x > 0 else "" for x in df['COT 1AM Ontime']], textposition='inside', textangle=-90, insidetextanchor='end', textfont=dict(size=16, color='#0f172a')))
+        fig_cot_1am.add_trace(go.Scatter(x=df['Ngày'], y=df['COT 1AM Rate (%)'], name="Tỷ lệ 1AM", yaxis="y2", line=dict(color='#ea580c', width=5, shape='spline'), mode='lines+markers+text', text=[f"{v:.0f}%" if v > 0 else "" for v in df['COT 1AM Rate (%)']], textposition="top center", textfont=dict(size=18, color='#7c2d12', weight='bold')))
+        fig_cot_1am = clean_layout(fig_cot_1am, "% Sent Volume 1AM | 1AM 发件率")
+        fig_cot_1am.update_layout(height=500, showlegend=False, yaxis2=dict(overlaying='y', side='right', range=[0, 110], showgrid=False, tickfont=dict(size=16, color='#1e293b', weight='bold')), uniformtext=dict(minsize=14, mode='show'))
+        st.plotly_chart(fig_cot_1am, use_container_width=True)
 
     col_l1, col_l2, col_l3 = st.columns([1, 1, 1.2])
     with col_l1:
