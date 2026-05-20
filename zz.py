@@ -1067,9 +1067,6 @@ now_str = datetime.now().strftime("%d/%m/%Y · %H:%M")
 
 st.markdown(f"""
 <div class="dashboard-header">
-    <div class="header-badge">
-        <span class="header-live-dot"></span>Live · Cập nhật tự động mỗi 60 giây
-    </div>
     <div class="header-title">J&amp;T Cargo · KPI Dashboard</div>
     <p class="header-subtitle">
         Tổng hợp hiệu suất vận hành · 运营绩效汇总 &nbsp;|&nbsp;
