@@ -213,13 +213,6 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     padding-bottom: 14px;
     border-bottom: 1px solid var(--border);
 }
-.section-header-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-}
 .section-header-text {
     font-size: 19px;
     font-weight: 800;
@@ -727,17 +720,17 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     # ── 6 summary cards ──
     CARDS = [
-        ("📦", "Inbound", "入库", t_vin, period_label, "#1a56db"),
-        ("📤", "Outbound", "出库", t_vout, period_label, "#059669"),
-        ("🔄", "Tổng đơn xử lý", "总处理量", t_tproc_vol, period_label, "#7c3aed"),
-        ("⚖️", "Trọng lượng (kg)", "重量", t_tproc_wgt, period_label, "#0284c7"),
-        ("⚠️", "Missort", "错分", t_ms, period_label, "#f59e0b"),
-        ("📊", "Backlog", "积压", t_bl, period_label, "#ef4444"),
+        ("Inbound", "入库", t_vin, period_label, "#1a56db"),
+        ("Outbound", "出库", t_vout, period_label, "#059669"),
+        ("Tổng đơn xử lý", "总处理量", t_tproc_vol, period_label, "#7c3aed"),
+        ("Trọng lượng (kg)", "重量", t_tproc_wgt, period_label, "#0284c7"),
+        ("Missort", "错分", t_ms, period_label, "#f59e0b"),
+        ("Backlog", "积压", t_bl, period_label, "#ef4444"),
     ]
 
     # render as custom metric cards
     cols = st.columns(6)
-    for col_obj, (icon, vn, cn, val, lbl, color) in zip(cols, CARDS):
+    for col_obj, (vn, cn, val, lbl, color) in zip(cols, CARDS):
         with col_obj:
             st.markdown(f"""
             <div style="
@@ -747,11 +740,10 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                 border-radius:14px;
                 padding:18px 16px 14px;
                 box-shadow:0 2px 8px rgba(11,20,55,.07);
-                transition: box-shadow .2s;
             ">
                 <div style="font-size:11px;font-weight:700;color:#8896b3;
                     text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
-                    {icon} {vn} · {cn} <span style="background:{color}22;color:{color};
+                    {vn} · {cn} <span style="background:{color}22;color:{color};
                     padding:2px 7px;border-radius:99px;font-size:10px;margin-left:4px">{lbl}</span>
                 </div>
                 <div style="font-family:'JetBrains Mono',monospace;font-size:26px;
@@ -837,8 +829,8 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     st.markdown(f"""
     <div class="section-header">
-        <div class="section-header-icon" style="background:{accent_color}18">
-            <span>📈</span>
+        
+
         </div>
         <div>
             <div class="section-header-text">Sản Lượng & Năng Suất · 生产与产能</div>
@@ -909,8 +901,8 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     st.markdown(f"""
     <div class="section-header">
-        <div class="section-header-icon" style="background:{accent_color}18">
-            <span>🚚</span>
+        
+
         </div>
         <div>
             <div class="section-header-text">Vận Tải & COT · 运输与准时出库管理</div>
@@ -1043,7 +1035,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     # ── Raw data expander ──
     if show_raw_data:
-        with st.expander("🔍 Dữ liệu chi tiết | 详细数据"):
+         详细数据"):| 详细数据"):
             raw = df.copy()
             for c in raw.columns:
                 if c != "Ngày":
@@ -1088,12 +1080,12 @@ if df_hcm.empty and df_bn.empty and df_sh.empty:
 
 # ── Tabs ──
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🏙️  Hồ Chí Minh",
-    "🏭  Bắc Ninh",
-    "🏢  SH DC",
-    "📅  HCM · 7 Ngày",
-    "📅  BN · 7 Ngày",
-    "📅  SH DC · 7 Ngày",
+    "Hồ Chí Minh",
+    "Bắc Ninh",
+    "SH DC",
+    "HCM · 7 Ngày",
+    "BN · 7 Ngày",
+    "SH DC · 7 Ngày",
 ])
 
 with tab1:
