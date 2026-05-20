@@ -1035,7 +1035,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     # ── Raw data expander ──
     if show_raw_data:
-         详细数据"):| 详细数据"):
+        with st.expander("Dữ liệu chi tiết | 详细数据"):
             raw = df.copy()
             for c in raw.columns:
                 if c != "Ngày":
