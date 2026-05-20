@@ -829,9 +829,6 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     st.markdown(f"""
     <div class="section-header">
-        
-
-        </div>
         <div>
             <div class="section-header-text">Sản Lượng & Năng Suất · 生产与产能</div>
             <div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div>
@@ -901,9 +898,6 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     st.markdown(f"""
     <div class="section-header">
-        
-
-        </div>
         <div>
             <div class="section-header-text">Vận Tải & COT · 运输与准时出库管理</div>
             <div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div>
