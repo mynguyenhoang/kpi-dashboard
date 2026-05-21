@@ -1,3 +1,4 @@
+import streamlit.components.v1 as components
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -529,9 +530,44 @@ def get_data():
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
 
+
 # ════════════════════════════════════════════════════════════
 # 3. TIỆN ÍCH ĐỊNH DẠNG
 # ════════════════════════════════════════════════════════════
+
+# CSS cần thiết để nhúng vào iframe (dùng cho components.html)
+_IFRAME_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:transparent;font-family:'Plus Jakarta Sans',sans-serif}
+:root{
+  --navy:#0B1437;--blue:#1a56db;--surface:#ffffff;--surface-2:#f4f7fe;
+  --border:#e8edf9;--text-main:#0b1437;--text-muted:#5a6585;
+  --green:#05c168;--green-bg:#ecfdf5;--green-txt:#065f46;
+  --red:#f04438;--font:'Plus Jakarta Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;
+}
+.kpi-wrap{background:#fff;border-radius:14px;box-shadow:0 4px 16px rgba(11,20,55,.10);overflow:hidden;border:1px solid #e8edf9}
+.kpi-table{width:100%;border-collapse:collapse;font-family:var(--font)}
+.kpi-table thead tr{background:linear-gradient(135deg,#0B1437 0%,#1a3a8f 100%)}
+.kpi-table th{color:rgba(255,255,255,.85);padding:13px 10px;text-align:center;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;border:none;white-space:nowrap}
+.kpi-table th:first-child{text-align:left}
+.kpi-table tbody tr:hover{background:#f0f5ff}
+.kpi-table td{padding:11px 10px;border-bottom:1px solid #e8edf9;font-size:13px;color:#0b1437;vertical-align:middle}
+.kpi-table tbody tr:last-child td{border-bottom:none}
+.col-pillar{font-weight:800;font-size:12px;text-align:center;background:#f4f7fe;letter-spacing:.3px;border-right:1px solid #e8edf9}
+.col-metric{font-weight:600;color:#1e293b;font-size:13px;border-right:1px solid #e8edf9;min-width:200px}
+.col-num{text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600;color:#0b1437;white-space:nowrap}
+.col-mtd{text-align:right;font-family:var(--font-mono);font-size:15px;font-weight:800;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;border-left:3px solid #05c168;white-space:nowrap}
+.sh{background:#f8fafc}.section-header{display:flex;align-items:center;gap:10px;padding:14px 2px 12px;border-bottom:1px solid #e8edf9;margin-bottom:4px}
+.section-header-text{font-size:17px;font-weight:800;color:#0b1437;letter-spacing:-.3px}
+.section-header-sub{font-size:12px;font-weight:500;color:#5a6585;margin-top:2px}
+"""
+
+def _html(html_body: str, height: int = 500):
+    """Render HTML via iframe — bypasses Streamlit markdown sanitizer hoàn toàn."""
+    full = f"<!DOCTYPE html><html><head><style>{_IFRAME_CSS}</style></head><body>{html_body}</body></html>"
+    components.html(full, height=height, scrolling=False)
+
 def fmt_vn(number):
     if pd.isna(number) or number == "":
         return ""
@@ -811,15 +847,12 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     _thead = f'<th style="text-align:left;width:90px">KPI</th><th style="text-align:left">Hạng mục | 指标名称</th>{header_wow}<th style="min-width:110px">{period_label} | 累计</th>{daily_hdrs}'
     _tbody = "".join(rows)
-    st.markdown(
-        f'<div class="kpi-wrap"><table class="kpi-table"><thead><tr>{_thead}</tr></thead><tbody>{_tbody}</tbody></table></div>',
-        unsafe_allow_html=True,
-    )
+    _html(f'<div class="kpi-wrap"><table class="kpi-table"><thead><tr>{_thead}</tr></thead><tbody>{_tbody}</tbody></table></div>', height=520)
 
     # ══════════════════════════
     # SECTION 1 · SẢN LƯỢNG
     # ══════════════════════════
-    st.markdown('<div class="section-header"><div><div class="section-header-text">Sản Lượng &amp; Năng Suất · 生产与产能</div><div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div></div></div>', unsafe_allow_html=True)
+    _html('<div class="section-header"><div><div class="section-header-text">Sản Lượng &amp; Năng Suất · 生产与产能</div><div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div></div></div>', height=68)
 
     col1, col2, col3 = st.columns([1.2, 1, 1])
 
@@ -881,7 +914,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     # SECTION 2 · VẬN TẢI & COT
     # ══════════════════════════
-    st.markdown('<div class="section-header"><div><div class="section-header-text">Vận Tải &amp; COT · 运输与准时出库管理</div><div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div></div></div>', unsafe_allow_html=True)
+    _html('<div class="section-header"><div><div class="section-header-text">Vận Tải &amp; COT · 运输与准时出库管理</div><div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div></div></div>', height=68)
 
     col_t1, col_t2, col_t3 = st.columns(3)
 
