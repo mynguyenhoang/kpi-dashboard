@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
 import time
-from datetime import datetime
 
 # ════════════════════════════════════════════════════════════
 # 1. CẤU HÌNH TRANG & CSS NÂNG CẤP CHUYÊN NGHIỆP
@@ -122,6 +121,19 @@ st.markdown("""
     font-weight: 500;
     margin: 0;
 }
+.header-live-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #05c168;
+    box-shadow: 0 0 0 3px rgba(5,193,104,.25);
+    animation: pulse 2s infinite;
+    margin-right: 4px;
+}
+@keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 3px rgba(5,193,104,.25); }
+    50%      { box-shadow: 0 0 0 6px rgba(5,193,104,.08); }
+}
 
 /* ─── TABS ─────────────────────────────────────────────── */
 [data-baseweb="tab-list"] {
@@ -176,6 +188,21 @@ div[data-testid="metric-container"]::before {
     background: linear-gradient(90deg, var(--blue) 0%, var(--blue-light) 100%);
     border-radius: var(--radius) var(--radius) 0 0;
 }
+div[data-testid="metric-container"] label {
+    font-family: var(--font) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    letter-spacing: .4px !important;
+    text-transform: uppercase !important;
+}
+div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
+    font-family: var(--font-mono) !important;
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: var(--navy) !important;
+    letter-spacing: -1px !important;
+}
 
 /* ─── SECTION HEADERS ──────────────────────────────────── */
 .section-header {
@@ -203,7 +230,7 @@ div[data-testid="metric-container"]::before {
     background: var(--surface);
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
-    overflow-x: auto;
+    overflow: hidden;
     border: 1px solid var(--border);
     margin-bottom: 28px;
 }
@@ -291,7 +318,7 @@ div[data-testid="metric-container"]::before {
 
 
 # ════════════════════════════════════════════════════════════
-# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
+# 2. HÀM LẤY DỮ LIỆU TỪ FEISHU (giữ nguyên logic)
 # ════════════════════════════════════════════════════════════
 def get_tenant_access_token():
     try:
@@ -601,7 +628,7 @@ def clean_layout(fig, title, height=480):
 
 
 # ════════════════════════════════════════════════════════════
-# 5. MAIN RENDER (FIXED & OPTIMIZED FOR 7 DAYS)
+# 5. MAIN RENDER
 # ════════════════════════════════════════════════════════════
 def get_last_7_days(df):
     if df.empty: return df
@@ -648,41 +675,33 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         for i in range(num_daily_cols):
             cur = cur_vals[i]
             prev = prev_vals[i]
-            
-            if pd.isna(cur) or str(cur).strip() == "" or cur == "-":
-                cells.append("<td class='col-num' style='color:#cbd5e1; text-align:center;'>—</td>")
+            if pd.isna(cur):
+                cells.append("<td class='col-num' style='color:#cbd5e1'>—</td>")
                 continue
-                
-            try:
-                cur = float(cur)
-                cur_str = f"{cur:.1f}%" if is_pct else fmt_vn(cur)
-                
-                if pd.notna(prev) and str(prev).strip() != "" and prev != "-":
-                    prev = float(prev)
-                    diff = cur - prev
-                    if diff < 0:
-                        color = "#065f46" if inverse else "#dc2626"
-                        icon = "↓"
-                    elif diff > 0:
-                        color = "#dc2626" if inverse else "#065f46"
-                        icon = "↑"
-                    else:
-                        color = "#94a3b8"; icon = ""
-                    styled = (
-                        f"<span style='color:{color};font-family:var(--font-mono);"
-                        f"font-size:13px;font-weight:700'>{cur_str}"
-                        f"<sup style='font-size:10px;margin-left:2px'>{icon}</sup></span>"
-                    )
+            cur_str = f"{cur:.1f}%" if is_pct else fmt_vn(cur)
+            if pd.notna(prev):
+                diff = cur - prev
+                if diff < 0:
+                    color = "#065f46" if inverse else "#dc2626"
+                    icon = "↓"
+                elif diff > 0:
+                    color = "#dc2626" if inverse else "#065f46"
+                    icon = "↑"
                 else:
-                    styled = f"<span style='font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--navy)'>{cur_str}</span>"
-            except:
-                styled = f"<span style='color:#cbd5e1'>—</span>"
+                    color = "#94a3b8"; icon = ""
+                styled = (
+                    f"<span style='color:{color};font-family:var(--font-mono);"
+                    f"font-size:14px;font-weight:700'>{cur_str}"
+                    f"<sup style='font-size:10px;margin-left:2px'>{icon}</sup></span>"
+                )
+            else:
+                styled = f"<span style='font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--navy)'>{cur_str}</span>"
 
             bg = "#f8fafc" if i % 2 == 0 else "white"
-            cells.append(f"<td class='col-num' style='background:{bg}; text-align:right;'>{styled}</td>")
+            cells.append(f"<td class='col-num' style='background:{bg}'>{styled}</td>")
         return "".join(cells)
 
-    # ── MTD / 7 Ngày aggregates ──
+    # ── MTD aggregates ──
     t_vin        = df['Inbound Vol'].sum(skipna=True)
     t_vout       = df['Outbound Vol'].sum(skipna=True)
     t_tproc_vol  = df['Total Process Vol'].sum(skipna=True)
@@ -709,6 +728,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ("Backlog", "积压", t_bl, period_label, "#ef4444"),
     ]
 
+    # render as custom metric cards
     cols = st.columns(6)
     for col_obj, (vn, cn, val, lbl, color) in zip(cols, CARDS):
         with col_obj:
@@ -726,7 +746,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                     {vn} · {cn} <span style="background:{color}22;color:{color};
                     padding:2px 7px;border-radius:99px;font-size:10px;margin-left:4px">{lbl}</span>
                 </div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:24px;
+                <div style="font-family:'JetBrains Mono',monospace;font-size:26px;
                     font-weight:700;color:#0b1437;letter-spacing:-1px;line-height:1">
                     {fmt_vn(val)}
                 </div>
@@ -737,12 +757,11 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     # ── KPI table ──
     header_wow = (
-        '<th style="min-width:100px; text-align:center;">WOW</th>'
-        '<th style="text-align:right;">Tuần này</th><th style="text-align:right;">Tuần trước</th>'
+        '<th style="min-width:100px">WOW</th>'
+        '<th>Tuần này</th><th>Tuần trước</th>'
     ) if show_weekly else ""
-    
     daily_hdrs = "".join(
-        [f"<th style='background:rgba(255,255,255,.12); min-width:85px; text-align:right;'>{str(d)}</th>" for d in d_display]
+        [f"<th style='background:rgba(255,255,255,.12);min-width:90px'>{d}</th>" for d in d_display]
     )
 
     def build_row(kpi_title, rowspan, kpi_color, metric_name,
@@ -750,7 +769,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                   is_pct=False, inverse=False, is_first=False):
         kpi_td = (
             f'<td rowspan="{rowspan}" class="col-pillar" '
-            f'style="border-left:3px solid {kpi_color};color:{kpi_color};font-size:12px; text-align:center; vertical-align:middle;">'
+            f'style="border-left:3px solid {kpi_color};color:{kpi_color};font-size:12px">'
             f'{kpi_title}</td>'
         ) if is_first else ''
         wow_td = get_wow_cell(wow_cur, wow_prev, is_pct, inverse) if show_weekly else ''
@@ -758,66 +777,49 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         d_tds = get_d(col_name, is_pct, inverse)
         return (
             f"<tr>{kpi_td}"
-            f"<td class='col-metric' style='text-align:left;'>{metric_name}</td>"
+            f"<td class='col-metric'>{metric_name}</td>"
             f"{wow_td}"
-            f"<td class='col-mtd' style='text-align:right;'>{mtd_str}</td>"
+            f"<td class='col-mtd'>{mtd_str}</td>"
             f"{d_tds}</tr>"
         )
 
     rows = [
-        build_row("Sản Lượng<br>生产", 3, "#1a56db", "Inbound (đơn) | 入库单量",
-                 summary.get('cw_vin',0), summary.get('pw_vin',0), t_vin, 'Inbound Vol', is_first=True),
+        build_row("Sản Lượng<br>生产", 3, "#1a56db",
+                  "Inbound (đơn) | 入库单量",
+                  summary['cw_vin'], summary['pw_vin'], t_vin, 'Inbound Vol', is_first=True),
         build_row("", 0, "", "Outbound (đơn) | 出库单量",
-                 summary.get('cw_vout',0), summary.get('pw_vout',0), t_vout, 'Outbound Vol'),
+                  summary['cw_vout'], summary['pw_vout'], t_vout, 'Outbound Vol'),
         build_row("", 0, "", "Trọng lượng (kg) | 重量",
-                 summary.get('cw_tproc_wgt',0), summary.get('pw_tproc_wgt',0), t_tproc_wgt, 'Total Process Wgt'),
+                  summary['cw_tproc_wgt'], summary['pw_tproc_wgt'], t_tproc_wgt, 'Total Process Wgt'),
 
-        build_row("Chất Lượng<br>质量", 4, "#ef4444", "Missort (đơn) | 错分单量",
-                 summary.get('cw_ms',0), summary.get('pw_ms',0), t_ms, 'Missort', inverse=True, is_first=True),
+        build_row("Chất Lượng<br>质量", 4, "#ef4444",
+                  "Missort (đơn) | 错分单量",
+                  summary['cw_ms'], summary['pw_ms'], t_ms, 'Missort', inverse=True, is_first=True),
         build_row("", 0, "", "Backlog (đơn) | 积压单量",
-                 summary.get('cw_bl',0), summary.get('pw_bl',0), t_bl, 'Backlog', inverse=True),
-        build_row("", 0, "", "Đơn gửi đúng COT | 准 thời出库量",
-                 summary.get('cw_cot_ontime',0), summary.get('pw_cot_ontime',0), cot_ontime_mtd, 'COT Ontime'),
+                  summary['cw_bl'], summary['pw_bl'], t_bl, 'Backlog', inverse=True),
+        build_row("", 0, "", "Đơn gửi đúng COT | 准时出库量",
+                  summary['cw_cot_ontime'], summary['pw_cot_ontime'], cot_ontime_mtd, 'COT Ontime'),
         build_row("", 0, "", "% Sent Volume Ontime | 准时率",
-                 summary.get('cw_cot',0), summary.get('pw_cot',0), cot_mtd, 'COT Rate (%)', is_pct=True),
+                  summary['cw_cot'], summary['pw_cot'], cot_mtd, 'COT Rate (%)', is_pct=True),
 
-        build_row("Vận Tải<br>运输", 2, "#059669", "Linehaul đúng COT (%) | 干线准时率",
-                 summary.get('cw_lhot',0), summary.get('pw_lhot',0), lhot_mtd, 'LH Rate (%)', is_pct=True, is_first=True),
+        build_row("Vận Tải<br>运输", 2, "#059669",
+                  "Linehaul đúng COT (%) | 干线准时率",
+                  summary['cw_lhot'], summary['pw_lhot'], lhot_mtd, 'LH Rate (%)', is_pct=True, is_first=True),
         build_row("", 0, "", "Shuttle đúng COT (%) | 摆渡准时率",
-                 summary.get('cw_shot',0), summary.get('pw_shot',0), shot_mtd, 'SH Rate (%)', is_pct=True),
+                  summary['cw_shot'], summary['pw_shot'], shot_mtd, 'SH Rate (%)', is_pct=True),
     ]
 
-    html_table = f"""
-    <div class="kpi-wrap">
-        <table class="kpi-table">
-            <thead>
-                <tr>
-                    <th style="text-align:left; width:90px;">KPI</th>
-                    <th style="text-align:left;">Hạng mục | 指标名称</th>
-                    {header_wow}
-                    <th style="min-width:110px; text-align:right;">{period_label} | 累计</th>
-                    {daily_hdrs}
-                </tr>
-            </thead>
-            <tbody>
-                {"".join(rows)}
-            </tbody>
-        </table>
-    </div>
-    """
-    st.markdown(html_table, unsafe_allow_html=True)
+    _thead = f'<th style="text-align:left;width:90px">KPI</th><th style="text-align:left">Hạng mục | 指标名称</th>{header_wow}<th style="min-width:110px">{period_label} | 累计</th>{daily_hdrs}'
+    _tbody = "".join(rows)
+    st.markdown(
+        f'<div class="kpi-wrap"><table class="kpi-table"><thead><tr>{_thead}</tr></thead><tbody>{_tbody}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
 
     # ══════════════════════════
     # SECTION 1 · SẢN LƯỢNG
     # ══════════════════════════
-    st.markdown(f"""
-    <div class="section-header">
-        <div>
-            <div class="section-header-text">Sản Lượng & Năng Suất · 生产与产能</div>
-            <div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><div><div class="section-header-text">Sản Lượng &amp; Năng Suất · 生产与产能</div><div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div></div></div>', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1.2, 1, 1])
 
@@ -879,14 +881,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     # SECTION 2 · VẬN TẢI & COT
     # ══════════════════════════
-    st.markdown(f"""
-    <div class="section-header">
-        <div>
-            <div class="section-header-text">Vận Tải & COT · 运输与准时出库管理</div>
-            <div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><div><div class="section-header-text">Vận Tải &amp; COT · 运输与准时出库管理</div><div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div></div></div>', unsafe_allow_html=True)
 
     col_t1, col_t2, col_t3 = st.columns(3)
 
@@ -1029,6 +1024,9 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 # ════════════════════════════════════════════════════════════
 # 6. APP ENTRY
 # ════════════════════════════════════════════════════════════
+
+# ── Header banner ──
+from datetime import datetime
 now_str = datetime.now().strftime("%d/%m/%Y · %H:%M")
 
 st.markdown(f"""
