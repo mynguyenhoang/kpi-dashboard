@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 st.set_page_config(layout="wide")
-st.write("### 🔍 CÔNG CỤ BẮT BỆNH DỮ LIỆU FEISHU")
+st.write("### Check data")
 
 def get_tenant_access_token():
     url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
