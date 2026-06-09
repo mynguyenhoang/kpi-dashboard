@@ -867,7 +867,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig = clean_layout(fig, "Inbound & Outbound | 每日入库/出库")
         fig.update_layout(legend=dict(orientation="h", y=1.12))
-        st.plotly_chart(fig, use_container_width=True, key=f"{hub_name}_fig1")
+        st.plotly_chart(fig, use_container_width=True, key=f"{hub_name}_{period_label}_fig1")
     with col2:
         fig2 = go.Figure()
         fig2.add_trace(go.Bar(
@@ -884,7 +884,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig2 = clean_layout(fig2, "Năng suất (Số đơn) | 产能单数")
         fig2.update_layout(showlegend=False)
-        st.plotly_chart(fig2, use_container_width=True, key=f"{hub_name}_fig2")
+        st.plotly_chart(fig2, use_container_width=True, key=f"{hub_name}_{period_label}_fig2")
     with col3:
         fig3 = go.Figure()
         fig3.add_trace(go.Bar(
@@ -901,7 +901,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig3 = clean_layout(fig3, "Năng suất (Kg) | 产能重量")
         fig3.update_layout(showlegend=False)
-        st.plotly_chart(fig3, use_container_width=True, key=f"{hub_name}_fig3")
+        st.plotly_chart(fig3, use_container_width=True, key=f"{hub_name}_{period_label}_fig3")
 
     # ══════════════════════════
     # SECTION 2 · VẬN TẢI & COT
@@ -925,7 +925,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig4 = clean_layout(fig4, "Số chuyến Shuttle/LH | 总车次")
         fig4.update_layout(barmode='stack', legend=dict(orientation="h", y=1.12))
-        st.plotly_chart(fig4, use_container_width=True, key=f"{hub_name}_fig4")
+        st.plotly_chart(fig4, use_container_width=True, key=f"{hub_name}_{period_label}_fig4")
     with col_t2:
         fig5 = go.Figure()
         fig5.add_trace(go.Bar(
@@ -951,7 +951,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             yaxis2=dict(overlaying='y', side='right', range=[0, 115],
                         showgrid=False, tickfont=dict(size=12, color='#059669'))
         )
-        st.plotly_chart(fig5, use_container_width=True, key=f"{hub_name}_fig5")
+        st.plotly_chart(fig5, use_container_width=True, key=f"{hub_name}_{period_label}_fig5")
     with col_t3:
         fig6 = go.Figure()
         fig6.add_trace(go.Bar(
@@ -977,7 +977,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             yaxis2=dict(overlaying='y', side='right', range=[0, 115],
                         showgrid=False, tickfont=dict(size=12, color='#ea580c'))
         )
-        st.plotly_chart(fig6, use_container_width=True, key=f"{hub_name}_fig6")
+        st.plotly_chart(fig6, use_container_width=True, key=f"{hub_name}_{period_label}_fig6")
 
     col_l1, col_l2, col_l3 = st.columns([1, 1, 1.2])
     with col_l1:
@@ -991,7 +991,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig7 = clean_layout(fig7, "Shuttle Late | 支线延迟", height=380)
         fig7.update_layout(showlegend=False)
-        st.plotly_chart(fig7, use_container_width=True, key=f"{hub_name}_fig7")
+        st.plotly_chart(fig7, use_container_width=True, key=f"{hub_name}_{period_label}_fig7")
     with col_l2:
         fig8 = go.Figure()
         fig8.add_trace(go.Bar(
@@ -1003,7 +1003,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig8 = clean_layout(fig8, "Linehaul Late | 干线延迟", height=380)
         fig8.update_layout(showlegend=False)
-        st.plotly_chart(fig8, use_container_width=True, key=f"{hub_name}_fig8")
+        st.plotly_chart(fig8, use_container_width=True, key=f"{hub_name}_{period_label}_fig8")
     with col_l3:
         fig9 = go.Figure()
         fig9.add_trace(go.Bar(
@@ -1020,7 +1020,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         ))
         fig9 = clean_layout(fig9, "Backlog | 积压", height=380)
         fig9.update_layout(showlegend=False)
-        st.plotly_chart(fig9, use_container_width=True, key=f"{hub_name}_fig9")
+        st.plotly_chart(fig9, use_container_width=True, key=f"{hub_name}_{period_label}_fig9")
 
     # ── Raw data expander ──
     if show_raw_data:
