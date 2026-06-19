@@ -7,8 +7,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
 import time
+
 # ════════════════════════════════════════════════════════════
-# 1. CẤU HÌNH TRANG & CSS NÂNG CẤP CHUYÊN NGHIỆP
+# 1. CẤU HÌNH TRANG & CSS
 # ════════════════════════════════════════════════════════════
 st.set_page_config(
     page_title="J&T Cargo · KPI Dashboard",
@@ -16,6 +17,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
 st.markdown("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -49,17 +51,21 @@ st.markdown("""
     --font:       'Plus Jakarta Sans', sans-serif;
     --font-mono:  'JetBrains Mono', monospace;
 }
+
 /* ─── APP BACKGROUND ───────────────────────────────────── */
 .stApp, [data-testid="stAppViewContainer"] {
     background: var(--surface-2) !important;
     font-family: var(--font) !important;
+    font-size: 15px !important;
 }
+
 /* ─── HIDE STREAMLIT CHROME ────────────────────────────── */
 #MainMenu, header, footer, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="stHeader"] {
     visibility: hidden !important;
     height: 0 !important;
 }
+
 /* ─── MAIN HEADER BANNER ───────────────────────────────── */
 .dashboard-header {
     background: linear-gradient(135deg, #0B1437 0%, #1a3a8f 50%, #0284c7 100%);
@@ -86,48 +92,21 @@ st.markdown("""
     border-radius: 50%;
     background: rgba(255,255,255,.04);
 }
-.header-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255,255,255,.15);
-    border: 1px solid rgba(255,255,255,.25);
-    border-radius: 999px;
-    padding: 4px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255,255,255,.9);
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-}
 .header-title {
-    font-size: 38px;
+    font-size: 40px;
     font-weight: 800;
     color: #fff;
     letter-spacing: -0.5px;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     line-height: 1.15;
 }
 .header-subtitle {
-    font-size: 15px;
+    font-size: 16px;
     color: rgba(255,255,255,.65);
     font-weight: 500;
     margin: 0;
 }
-.header-live-dot {
-    display: inline-block;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #05c168;
-    box-shadow: 0 0 0 3px rgba(5,193,104,.25);
-    animation: pulse 2s infinite;
-    margin-right: 4px;
-}
-@keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 3px rgba(5,193,104,.25); }
-    50%      { box-shadow: 0 0 0 6px rgba(5,193,104,.08); }
-}
+
 /* ─── TABS ─────────────────────────────────────────────── */
 [data-baseweb="tab-list"] {
     background: var(--surface) !important;
@@ -140,15 +119,16 @@ st.markdown("""
 }
 button[data-baseweb="tab"] {
     border-radius: 10px !important;
-    padding: 10px 22px !important;
+    padding: 10px 24px !important;
     font-family: var(--font) !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
     transition: all .2s ease !important;
 }
 button[data-baseweb="tab"] div {
     color: var(--text-muted) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
 }
 button[data-baseweb="tab"][aria-selected="true"] {
     background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%) !important;
@@ -157,6 +137,7 @@ button[data-baseweb="tab"][aria-selected="true"] {
 button[data-baseweb="tab"][aria-selected="true"] div {
     color: #fff !important;
 }
+
 /* ─── METRIC CARDS ─────────────────────────────────────── */
 div[data-testid="metric-container"] {
     background: var(--surface) !important;
@@ -182,19 +163,20 @@ div[data-testid="metric-container"]::before {
 }
 div[data-testid="metric-container"] label {
     font-family: var(--font) !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
     color: var(--text-muted) !important;
     letter-spacing: .4px !important;
     text-transform: uppercase !important;
 }
 div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     font-family: var(--font-mono) !important;
-    font-size: 28px !important;
+    font-size: 30px !important;
     font-weight: 700 !important;
     color: var(--navy) !important;
     letter-spacing: -1px !important;
 }
+
 /* ─── SECTION HEADERS ──────────────────────────────────── */
 .section-header {
     display: flex;
@@ -205,16 +187,17 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     border-bottom: 1px solid var(--border);
 }
 .section-header-text {
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 800;
     color: var(--navy);
     letter-spacing: -.3px;
 }
 .section-header-sub {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--text-muted);
 }
+
 /* ─── KPI TABLE ─────────────────────────────────────────── */
 .kpi-wrap {
     background: var(--surface);
@@ -233,28 +216,29 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     background: linear-gradient(135deg, var(--navy) 0%, #1a3a8f 100%);
 }
 .kpi-table th {
-    color: rgba(255,255,255,.85) !important;
-    padding: 14px 12px;
+    color: rgba(255,255,255,.9) !important;
+    padding: 16px 13px;
     text-align: center;
-    font-size: 12px !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
-    letter-spacing: .6px;
+    letter-spacing: .5px;
     text-transform: uppercase;
     border: none !important;
     white-space: nowrap;
 }
-.kpi-table th:first-child { text-align: left; border-radius: 0; }
+.kpi-table th:first-child { text-align: left; }
 .kpi-table tbody tr { transition: background .15s; }
 .kpi-table tbody tr:hover { background: #f0f5ff; }
 .kpi-table td {
-    padding: 12px 12px;
+    padding: 14px 13px;
     border-bottom: 1px solid var(--border);
     border-right: none;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text-main);
     vertical-align: middle;
 }
 .kpi-table tbody tr:last-child td { border-bottom: none; }
+
 /* Pillar cells */
 .col-pillar {
     font-weight: 800 !important;
@@ -270,15 +254,15 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
 .col-metric {
     font-weight: 600 !important;
     color: #1e293b !important;
-    font-size: 13.5px !important;
+    font-size: 15px !important;
     border-right: 1px solid var(--border) !important;
-    min-width: 220px;
+    min-width: 230px;
 }
 /* Numbers */
 .col-num {
     text-align: right !important;
     font-family: var(--font-mono) !important;
-    font-size: 14px !important;
+    font-size: 15px !important;
     font-weight: 600 !important;
     color: var(--navy) !important;
     white-space: nowrap;
@@ -287,21 +271,23 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
 .col-mtd {
     text-align: right !important;
     font-family: var(--font-mono) !important;
-    font-size: 16px !important;
+    font-size: 18px !important;
     font-weight: 800 !important;
     background: linear-gradient(135deg, #ecfdf5, #d1fae5) !important;
     color: #065f46 !important;
     border-left: 3px solid var(--green) !important;
     white-space: nowrap;
 }
+
 /* ─── SCROLLBAR ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c7d2e8; border-radius: 99px; }
-/* ─── STALE CHART ───────────────────────────────────────── */
+
 .js-plotly-plot { border-radius: var(--radius); overflow: hidden; }
 </style>
 """, unsafe_allow_html=True)
+
 # ════════════════════════════════════════════════════════════
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
 # ════════════════════════════════════════════════════════════
@@ -325,6 +311,7 @@ def get_data():
     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ85?valueRenderOption=FormattedValue"
     headers = {"Authorization": f"Bearer {token}"}
     res_data = None
+
     for attempt in range(5):
         try:
             res = requests.get(url, headers=headers, timeout=30).json()
@@ -353,7 +340,6 @@ def get_data():
         st.error("🔴 File Feishu trống!")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
 
-    # Max index needed = 79 (lht SH DC) → cần ít nhất 80 rows
     if len(vals) < 80:
         st.error(f"🔴 File chỉ có {len(vals)} dòng, cần ít nhất 80.")
         return (pd.DataFrame(), {}), (pd.DataFrame(), {}), (pd.DataFrame(), {})
@@ -398,7 +384,7 @@ def get_data():
 
         def extract_hub_data(
             vin_idx, vout_idx, win_idx, wout_idx, tproc_vol_idx, tproc_wgt_idx,
-            ms_idx, ms_rt_idx, bl_idx,
+            bl_idx,
             cot_total_idx, cot_ontime_idx,
             cot_total_1am_idx, cot_ontime_1am_idx, cot_rate_1am_idx,
             shc_idx, lhc_idx, sht_idx, lht_idx
@@ -410,9 +396,6 @@ def get_data():
             data["Outbound Wgt"]       = [clean_val(wout_idx, c)       for c in cols_to_scan]
             data["Total Process Vol"]  = [clean_val(tproc_vol_idx, c)  for c in cols_to_scan]
             data["Total Process Wgt"]  = [clean_val(tproc_wgt_idx, c)  for c in cols_to_scan]
-            # Missort: không còn trong sheet mới → trả về NaN
-            data["Missort"]            = [clean_val(ms_idx, c)         for c in cols_to_scan]
-            data["Tỷ lệ Missort (%)"]  = [clean_val(ms_rt_idx, c)      for c in cols_to_scan]
             data["Backlog"]            = [clean_val(bl_idx, c)         for c in cols_to_scan]
             data["COT Total"]          = [clean_val(cot_total_idx, c)  for c in cols_to_scan]
             data["COT Ontime"]         = [clean_val(cot_ontime_idx, c) for c in cols_to_scan]
@@ -474,8 +457,6 @@ def get_data():
                 "pw_vout":      clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0,
                 "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
-                "cw_ms":        clean_val(ms_idx, cw_idx) if cw_idx != -1 else 0,
-                "pw_ms":        clean_val(ms_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_bl":        clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0,
                 "pw_bl":        clean_val(bl_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0,
@@ -487,63 +468,30 @@ def get_data():
             }
             return pd.DataFrame(data), weekly_summary
 
-        # ── INDEX MAP (cập nhật theo sheet mới) ──────────────────────────
-        # Row layout (0-based):
-        #   0-21   : SẢN LƯỢNG  → vin/vout/wgt/process
-        #   22-32  : PRODUCTIVITY (FTE) → không dùng trong dashboard
-        #   33-43  : TỒN Ứ / BACKLOG  → bl_idx: HCM=35, BN=38, SH=41
-        #   44-79  : LINEHAUL ONTIME / COT / VẬN TẢI
-        #
-        # Missort (ms_idx) không còn trong sheet → dùng row 999 → clean_val trả NaN
-
         data_hcm = extract_hub_data(
             vin_idx=4,  vout_idx=5,  win_idx=6,  wout_idx=7,
             tproc_vol_idx=8,  tproc_wgt_idx=9,
-            ms_idx=999, ms_rt_idx=999,           # Missort không có trong sheet mới
-            bl_idx=35,                           # Tồn đọng HCM (idx 35)
-            cot_total_idx=46,                    # HCM COT Total  (idx 46)
-            cot_ontime_idx=47,                   # HCM COT Ontime (idx 47)
-            cot_total_1am_idx=49,                # HCM 1AM Total  (idx 49)
-            cot_ontime_1am_idx=50,               # HCM 1AM Ontime (idx 50)
-            cot_rate_1am_idx=51,                 # HCM 1AM Rate % (idx 51)
-            shc_idx=52,                          # HCM Shuttle Chuyến (idx 52)
-            lhc_idx=53,                          # HCM Linehaul Chuyến (idx 53)
-            sht_idx=54,                          # HCM Shuttle Late (idx 54)
-            lht_idx=55,                          # HCM Linehaul Late (idx 55)
+            bl_idx=35,
+            cot_total_idx=46,    cot_ontime_idx=47,
+            cot_total_1am_idx=49, cot_ontime_1am_idx=50, cot_rate_1am_idx=51,
+            shc_idx=52, lhc_idx=53, sht_idx=54, lht_idx=55,
         )
-
         data_bn = extract_hub_data(
             vin_idx=10, vout_idx=11, win_idx=12, wout_idx=13,
             tproc_vol_idx=14, tproc_wgt_idx=15,
-            ms_idx=999, ms_rt_idx=999,           # Missort không có trong sheet mới
-            bl_idx=38,                           # Tồn đọng BN (idx 38)
-            cot_total_idx=58,                    # BN COT Total  (idx 58)
-            cot_ontime_idx=59,                   # BN COT Ontime (idx 59)
-            cot_total_1am_idx=61,                # BN 1AM Total  (idx 61)
-            cot_ontime_1am_idx=62,               # BN 1AM Ontime (idx 62)
-            cot_rate_1am_idx=63,                 # BN 1AM Rate % (idx 63)
-            shc_idx=64,                          # BN Shuttle Chuyến (idx 64)
-            lhc_idx=65,                          # BN Linehaul Chuyến (idx 65)
-            sht_idx=66,                          # BN Shuttle Late (idx 66)
-            lht_idx=67,                          # BN Linehaul Late (idx 67)
+            bl_idx=38,
+            cot_total_idx=58,    cot_ontime_idx=59,
+            cot_total_1am_idx=61, cot_ontime_1am_idx=62, cot_rate_1am_idx=63,
+            shc_idx=64, lhc_idx=65, sht_idx=66, lht_idx=67,
         )
-
         data_sh = extract_hub_data(
             vin_idx=16, vout_idx=17, win_idx=18, wout_idx=19,
             tproc_vol_idx=20, tproc_wgt_idx=21,
-            ms_idx=999, ms_rt_idx=999,           # Missort không có trong sheet mới
-            bl_idx=41,                           # Tồn đọng SH (idx 41)
-            cot_total_idx=70,                    # SH COT Total  (idx 70)
-            cot_ontime_idx=71,                   # SH COT Ontime (idx 71)
-            cot_total_1am_idx=73,                # SH 1AM Total  (idx 73)
-            cot_ontime_1am_idx=74,               # SH 1AM Ontime (idx 74)
-            cot_rate_1am_idx=75,                 # SH 1AM Rate % (idx 75)
-            shc_idx=76,                          # SH Shuttle Chuyến (idx 76)
-            lhc_idx=77,                          # SH Linehaul Chuyến (idx 77)
-            sht_idx=78,                          # SH Shuttle Late (idx 78)
-            lht_idx=79,                          # SH Linehaul Late (idx 79)
+            bl_idx=41,
+            cot_total_idx=70,    cot_ontime_idx=71,
+            cot_total_1am_idx=73, cot_ontime_1am_idx=74, cot_rate_1am_idx=75,
+            shc_idx=76, lhc_idx=77, sht_idx=78, lht_idx=79,
         )
-
         return data_hcm, data_bn, data_sh
 
     except Exception as e:
@@ -556,7 +504,7 @@ def get_data():
 _IFRAME_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:transparent;font-family:'Plus Jakarta Sans',sans-serif}
+body{background:transparent;font-family:'Plus Jakarta Sans',sans-serif;font-size:15px}
 :root{
   --navy:#0B1437;--blue:#1a56db;--surface:#ffffff;--surface-2:#f4f7fe;
   --border:#e8edf9;--text-main:#0b1437;--text-muted:#5a6585;
@@ -566,18 +514,24 @@ body{background:transparent;font-family:'Plus Jakarta Sans',sans-serif}
 .kpi-wrap{background:#fff;border-radius:14px;box-shadow:0 4px 16px rgba(11,20,55,.10);overflow:hidden;border:1px solid #e8edf9}
 .kpi-table{width:100%;border-collapse:collapse;font-family:var(--font)}
 .kpi-table thead tr{background:linear-gradient(135deg,#0B1437 0%,#1a3a8f 100%)}
-.kpi-table th{color:rgba(255,255,255,.85);padding:13px 10px;text-align:center;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;border:none;white-space:nowrap}
+.kpi-table th{color:rgba(255,255,255,.9);padding:15px 12px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:none;white-space:nowrap}
 .kpi-table th:first-child{text-align:left}
 .kpi-table tbody tr:hover{background:#f0f5ff}
-.kpi-table td{padding:11px 10px;border-bottom:1px solid #e8edf9;font-size:13px;color:#0b1437;vertical-align:middle}
+.kpi-table td{padding:13px 12px;border-bottom:1px solid #e8edf9;font-size:15px;color:#0b1437;vertical-align:middle}
 .kpi-table tbody tr:last-child td{border-bottom:none}
-.col-pillar{font-weight:800;font-size:12px;text-align:center;background:#f4f7fe;letter-spacing:.3px;border-right:1px solid #e8edf9}
-.col-metric{font-weight:600;color:#1e293b;font-size:13px;border-right:1px solid #e8edf9;min-width:200px}
-.col-num{text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600;color:#0b1437;white-space:nowrap}
-.col-mtd{text-align:right;font-family:var(--font-mono);font-size:15px;font-weight:800;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;border-left:3px solid #05c168;white-space:nowrap}
-.sh{background:#f8fafc}.section-header{display:flex;align-items:center;gap:10px;padding:14px 2px 12px;border-bottom:1px solid #e8edf9;margin-bottom:4px}
-.section-header-text{font-size:17px;font-weight:800;color:#0b1437;letter-spacing:-.3px}
-.section-header-sub{font-size:12px;font-weight:500;color:#5a6585;margin-top:2px}
+.col-pillar{font-weight:800;font-size:13px;text-align:center;background:#f4f7fe;letter-spacing:.3px;border-right:1px solid #e8edf9;white-space:nowrap}
+.col-metric{font-weight:600;color:#1e293b;font-size:15px;border-right:1px solid #e8edf9;min-width:220px}
+.col-num{text-align:right;font-family:var(--font-mono);font-size:15px;font-weight:600;color:#0b1437;white-space:nowrap}
+.col-mtd{text-align:right;font-family:var(--font-mono);font-size:18px;font-weight:800;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;border-left:3px solid #05c168;white-space:nowrap}
+.section-header{display:flex;align-items:center;gap:10px;padding:14px 2px 12px;border-bottom:1px solid #e8edf9;margin-bottom:4px}
+.section-header-text{font-size:19px;font-weight:800;color:#0b1437;letter-spacing:-.3px}
+.section-header-sub{font-size:13px;font-weight:500;color:#5a6585;margin-top:2px}
+/* Trend badge */
+.trend-up-good{display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #86efac;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
+.trend-up-bad{display:inline-block;background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
+.trend-down-good{display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #86efac;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
+.trend-down-bad{display:inline-block;background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
+.trend-neutral{display:inline-block;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
 """
 
 def _html(html_body: str, height: int = 500):
@@ -595,32 +549,39 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     if pd.isna(prev) or (prev == 0 and not is_pct):
         cur_str = f"{cur:.2f}%" if is_pct and pd.notna(cur) else fmt_vn(cur)
         if pd.isna(cur): cur_str = "—"
-        return f"<td style='text-align:center;color:#94a3b8;font-size:13px'>—</td><td class='col-num'>{cur_str}</td><td class='col-num'>—</td>"
+        return f"<td style='text-align:center;color:#94a3b8;font-size:14px'>—</td><td class='col-num'>{cur_str}</td><td class='col-num'>—</td>"
     if pd.isna(cur):
         prev_str = f"{prev:.2f}%" if is_pct else fmt_vn(prev)
-        return f"<td style='text-align:center;color:#94a3b8;font-size:13px'>—</td><td class='col-num'>—</td><td class='col-num'>{prev_str}</td>"
+        return f"<td style='text-align:center;color:#94a3b8;font-size:14px'>—</td><td class='col-num'>—</td><td class='col-num'>{prev_str}</td>"
+
     diff = cur - prev
-    pct = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
+    pct  = diff if is_pct else ((diff / prev) * 100 if prev > 0 else 0)
     is_positive = diff > 0
     good = (is_positive and not inverse) or (not is_positive and inverse)
+
     if diff > 0:
         bg = "#ecfdf5" if good else "#fef2f2"
         tc = "#065f46" if good else "#b91c1c"
+        border = "#86efac" if good else "#fca5a5"
         sign = "+"
         arrow = "▲"
     elif diff < 0:
         bg = "#fef2f2" if good else "#ecfdf5"
         tc = "#b91c1c" if good else "#065f46"
+        border = "#fca5a5" if good else "#86efac"
         sign = ""
         arrow = "▼"
     else:
-        bg = "#f8fafc"; tc = "#64748b"; sign = ""; arrow = "●"
+        bg = "#f1f5f9"; tc = "#64748b"; border = "#cbd5e1"; sign = ""; arrow = "●"
+
     wow_str = f"{arrow} {sign}{pct:.1f}%" if not is_pct else f"{arrow} {sign}{diff:.1f}%"
-    cur_str = fmt_vn(cur) if not is_pct else f"{cur:.2f}%"
+    cur_str  = fmt_vn(cur) if not is_pct else f"{cur:.2f}%"
     prev_str = fmt_vn(prev) if not is_pct else f"{prev:.2f}%"
+
     return (
         f"<td style='background:{bg};color:{tc};font-weight:800;text-align:center;"
-        f"font-size:13px;border-radius:6px;white-space:nowrap'>{wow_str}</td>"
+        f"font-size:14px;border-radius:8px;white-space:nowrap;"
+        f"border:1px solid {border};padding:6px 10px'>{wow_str}</td>"
         f"<td class='col-num'>{cur_str}</td>"
         f"<td class='col-num'>{prev_str}</td>"
     )
@@ -628,7 +589,7 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 # ════════════════════════════════════════════════════════════
 # 4. CHART THEME
 # ════════════════════════════════════════════════════════════
-CHART_FONT = dict(family="Plus Jakarta Sans, sans-serif", size=13, color="#0b1437")
+CHART_FONT = dict(family="Plus Jakarta Sans, sans-serif", size=14, color="#0b1437")
 
 def clean_layout(fig, title, height=480):
     fig.update_layout(
@@ -644,7 +605,7 @@ def clean_layout(fig, title, height=480):
         font=CHART_FONT,
         xaxis=dict(
             showgrid=False,
-            tickfont=dict(size=12, color="#5a6585"),
+            tickfont=dict(size=13, color="#5a6585"),
             tickangle=-45,
             linecolor="#e8edf9",
             showline=True,
@@ -653,16 +614,16 @@ def clean_layout(fig, title, height=480):
             showgrid=True,
             gridcolor="#f0f4ff",
             gridwidth=1,
-            tickfont=dict(size=12, color="#5a6585"),
+            tickfont=dict(size=13, color="#5a6585"),
             zeroline=False,
         ),
         hoverlabel=dict(
-            font=dict(family="Plus Jakarta Sans, sans-serif", size=14),
+            font=dict(family="Plus Jakarta Sans, sans-serif", size=15),
             bgcolor="white",
             bordercolor="#e8edf9",
         ),
         legend=dict(
-            font=dict(family="Plus Jakarta Sans, sans-serif", size=13),
+            font=dict(family="Plus Jakarta Sans, sans-serif", size=14),
             bgcolor="rgba(255,255,255,.9)",
             bordercolor="#e8edf9",
             borderwidth=1,
@@ -679,7 +640,7 @@ def get_last_7_days(df):
     valid_df = df.dropna(subset=['Inbound Vol'])
     valid_df = valid_df[valid_df['Inbound Vol'] > 0]
     if valid_df.empty: return df.tail(7).reset_index(drop=True)
-    last_idx = valid_df.index[-1]
+    last_idx  = valid_df.index[-1]
     start_idx = max(0, last_idx - 6)
     return df.iloc[start_idx:last_idx+1].reset_index(drop=True)
 
@@ -687,82 +648,96 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                      show_weekly=True, num_daily_cols=3, show_raw_data=False):
     if df.empty: return
 
-    valid_df = df.dropna(subset=['Inbound Vol'])
-    valid_df = valid_df[valid_df['Inbound Vol'] > 0]
+    valid_df   = df.dropna(subset=['Inbound Vol'])
+    valid_df   = valid_df[valid_df['Inbound Vol'] > 0]
     actual_cols = min(len(valid_df), num_daily_cols)
-    data_slice = valid_df.tail(actual_cols + 1).reset_index(drop=True)
+    data_slice  = valid_df.tail(actual_cols + 1).reset_index(drop=True)
+
     if len(data_slice) > actual_cols:
         d_names = data_slice['Ngày'].tolist()[1:]
     else:
         d_names = data_slice['Ngày'].tolist()
-    pad_len = num_daily_cols - len(d_names)
+
+    pad_len   = num_daily_cols - len(d_names)
     d_display = ["-"] * pad_len + d_names
 
+    # ── Daily trend cells (badge-style indicators) ──────────
     def get_d(col_name, is_pct=False, inverse=False):
         vals_list = data_slice[col_name].tolist()
         if len(vals_list) > actual_cols:
-            cur_vals = vals_list[1:]
+            cur_vals  = vals_list[1:]
             prev_vals = vals_list[:-1]
         else:
-            cur_vals = vals_list
+            cur_vals  = vals_list
             prev_vals = [np.nan] + vals_list[:-1]
+
         cur_vals  = [np.nan] * pad_len + cur_vals
         prev_vals = [np.nan] * pad_len + prev_vals
+
         cells = []
         for i in range(num_daily_cols):
-            cur = cur_vals[i]
+            cur  = cur_vals[i]
             prev = prev_vals[i]
+
             if pd.isna(cur):
                 cells.append("<td class='col-num' style='color:#cbd5e1'>—</td>")
                 continue
+
             cur_str = f"{cur:.1f}%" if is_pct else fmt_vn(cur)
-            if pd.notna(prev):
-                diff = cur - prev
-                if diff < 0:
-                    color = "#065f46" if inverse else "#dc2626"
-                    icon = "↓"
-                elif diff > 0:
-                    color = "#dc2626" if inverse else "#065f46"
-                    icon = "↑"
-                else:
-                    color = "#94a3b8"; icon = ""
+            bg_cell = "#f8fafc" if i % 2 == 0 else "white"
+
+            if pd.notna(prev) and prev != cur:
+                diff     = cur - prev
+                going_up = diff > 0
+                good     = (going_up and not inverse) or (not going_up and inverse)
+                arrow    = "▲" if going_up else "▼"
+                badge_bg  = "#ecfdf5" if good else "#fef2f2"
+                badge_col = "#065f46" if good else "#b91c1c"
+                badge_bdr = "#86efac" if good else "#fca5a5"
+
+                badge = (
+                    f"<span style='display:inline-block;background:{badge_bg};color:{badge_col};"
+                    f"border:1px solid {badge_bdr};padding:2px 8px;border-radius:99px;"
+                    f"font-size:13px;font-weight:700;margin-left:5px;"
+                    f"font-family:JetBrains Mono,monospace'>{arrow}</span>"
+                )
                 styled = (
-                    f"<span style='color:{color};font-family:var(--font-mono);"
-                    f"font-size:14px;font-weight:700'>{cur_str}"
-                    f"<sup style='font-size:10px;margin-left:2px'>{icon}</sup></span>"
+                    f"<span style='font-family:JetBrains Mono,monospace;font-size:15px;"
+                    f"font-weight:700;color:#0b1437'>{cur_str}</span>{badge}"
                 )
             else:
-                styled = f"<span style='font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--navy)'>{cur_str}</span>"
-            bg = "#f8fafc" if i % 2 == 0 else "white"
-            cells.append(f"<td class='col-num' style='background:{bg}'>{styled}</td>")
+                styled = (
+                    f"<span style='font-family:JetBrains Mono,monospace;font-size:15px;"
+                    f"font-weight:700;color:#0b1437'>{cur_str}</span>"
+                )
+
+            cells.append(f"<td class='col-num' style='background:{bg_cell}'>{styled}</td>")
         return "".join(cells)
 
-    # ── MTD aggregates ──
-    t_vin         = df['Inbound Vol'].sum(skipna=True)
-    t_vout        = df['Outbound Vol'].sum(skipna=True)
-    t_tproc_vol   = df['Total Process Vol'].sum(skipna=True)
-    t_tproc_wgt   = df['Total Process Wgt'].sum(skipna=True)
-    t_ms          = df['Missort'].sum(skipna=True)
-    t_bl          = df['Backlog'].sum(skipna=True)
+    # ── MTD aggregates ──────────────────────────────────────
+    t_vin          = df['Inbound Vol'].sum(skipna=True)
+    t_vout         = df['Outbound Vol'].sum(skipna=True)
+    t_tproc_vol    = df['Total Process Vol'].sum(skipna=True)
+    t_tproc_wgt    = df['Total Process Wgt'].sum(skipna=True)
+    t_bl           = df['Backlog'].sum(skipna=True)
     cot_ontime_mtd = df['COT Ontime'].sum(skipna=True)
-    lh_tot    = df['Linehaul Chuyến'].fillna(0).sum()
-    lh_late   = df['Linehaul Late'].fillna(0).sum()
-    lhot_mtd  = (lh_tot - lh_late) / lh_tot * 100 if lh_tot > 0 else 0
-    sh_tot    = df['Shuttle Chuyến'].fillna(0).sum()
-    sh_late   = df['Shuttle Late'].fillna(0).sum()
-    shot_mtd  = (sh_tot - sh_late) / sh_tot * 100 if sh_tot > 0 else 0
-    cot_mtd   = df['COT Ontime'].sum() / df['COT Total'].sum() * 100 if df['COT Total'].sum() > 0 else 0
+    lh_tot   = df['Linehaul Chuyến'].fillna(0).sum()
+    lh_late  = df['Linehaul Late'].fillna(0).sum()
+    lhot_mtd = (lh_tot - lh_late) / lh_tot * 100 if lh_tot > 0 else 0
+    sh_tot   = df['Shuttle Chuyến'].fillna(0).sum()
+    sh_late  = df['Shuttle Late'].fillna(0).sum()
+    shot_mtd = (sh_tot - sh_late) / sh_tot * 100 if sh_tot > 0 else 0
+    cot_mtd  = df['COT Ontime'].sum() / df['COT Total'].sum() * 100 if df['COT Total'].sum() > 0 else 0
 
-    # ── 6 summary cards ──
+    # ── 5 Summary cards ────────────────────────────────────
     CARDS = [
-        ("Inbound",           "入库",   t_vin,       period_label, "#1a56db"),
-        ("Outbound",          "出库",   t_vout,      period_label, "#059669"),
-        ("Tổng đơn xử lý",   "总处理量", t_tproc_vol, period_label, "#7c3aed"),
-        ("Trọng lượng (kg)",  "重量",   t_tproc_wgt, period_label, "#0284c7"),
-        ("Missort",           "错分",   t_ms,        period_label, "#f59e0b"),
-        ("Backlog",           "积压",   t_bl,        period_label, "#ef4444"),
+        ("Inbound",          "入库",   t_vin,       period_label, "#1a56db"),
+        ("Outbound",         "出库",   t_vout,      period_label, "#059669"),
+        ("Tổng đơn xử lý",  "总处理量", t_tproc_vol, period_label, "#7c3aed"),
+        ("Trọng lượng (kg)", "重量",   t_tproc_wgt, period_label, "#0284c7"),
+        ("Backlog",          "积压",   t_bl,        period_label, "#ef4444"),
     ]
-    cols = st.columns(6)
+    cols = st.columns(5)
     for col_obj, (vn, cn, val, lbl, color) in zip(cols, CARDS):
         with col_obj:
             st.markdown(f"""
@@ -771,15 +746,16 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                 border:1px solid #e8edf9;
                 border-top:3px solid {color};
                 border-radius:14px;
-                padding:18px 16px 14px;
+                padding:20px 18px 16px;
                 box-shadow:0 2px 8px rgba(11,20,55,.07);
             ">
-                <div style="font-size:11px;font-weight:700;color:#8896b3;
-                    text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
-                    {vn} · {cn} <span style="background:{color}22;color:{color};
-                    padding:2px 7px;border-radius:99px;font-size:10px;margin-left:4px">{lbl}</span>
+                <div style="font-size:12px;font-weight:700;color:#8896b3;
+                    text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+                    {vn} · {cn}
+                    <span style="background:{color}22;color:{color};
+                    padding:2px 8px;border-radius:99px;font-size:11px;margin-left:4px">{lbl}</span>
                 </div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:26px;
+                <div style="font-family:'JetBrains Mono',monospace;font-size:28px;
                     font-weight:700;color:#0b1437;letter-spacing:-1px;line-height:1">
                     {fmt_vn(val)}
                 </div>
@@ -788,13 +764,16 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── KPI table ──
+    # ── KPI Table ───────────────────────────────────────────
     header_wow = (
-        '<th style="min-width:100px">WOW</th>'
-        '<th>Tuần này</th><th>Tuần trước</th>'
+        '<th style="min-width:110px">WOW</th>'
+        '<th style="min-width:100px">Tuần này</th>'
+        '<th style="min-width:100px">Tuần trước</th>'
     ) if show_weekly else ""
+
     daily_hdrs = "".join(
-        [f"<th style='background:rgba(255,255,255,.12);min-width:90px'>{d}</th>" for d in d_display]
+        [f"<th style='background:rgba(255,255,255,.12);min-width:100px'>{d}</th>"
+         for d in d_display]
     )
 
     def build_row(kpi_title, rowspan, kpi_color, metric_name,
@@ -802,12 +781,12 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                   is_pct=False, inverse=False, is_first=False):
         kpi_td = (
             f'<td rowspan="{rowspan}" class="col-pillar" '
-            f'style="border-left:3px solid {kpi_color};color:{kpi_color};font-size:12px">'
+            f'style="border-left:4px solid {kpi_color};color:{kpi_color};font-size:13px">'
             f'{kpi_title}</td>'
         ) if is_first else ''
-        wow_td = get_wow_cell(wow_cur, wow_prev, is_pct, inverse) if show_weekly else ''
+        wow_td  = get_wow_cell(wow_cur, wow_prev, is_pct, inverse) if show_weekly else ''
         mtd_str = f"{mtd_val:.1f}%" if is_pct else fmt_vn(mtd_val)
-        d_tds = get_d(col_name, is_pct, inverse)
+        d_tds   = get_d(col_name, is_pct, inverse)
         return (
             f"<tr>{kpi_td}"
             f"<td class='col-metric'>{metric_name}</td>"
@@ -824,11 +803,9 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                   summary['cw_vout'], summary['pw_vout'], t_vout, 'Outbound Vol'),
         build_row("", 0, "", "Trọng lượng (kg) | 重量",
                   summary['cw_tproc_wgt'], summary['pw_tproc_wgt'], t_tproc_wgt, 'Total Process Wgt'),
-        build_row("Chất Lượng<br>质量", 4, "#ef4444",
-                  "Missort (đơn) | 错分单量",
-                  summary['cw_ms'], summary['pw_ms'], t_ms, 'Missort', inverse=True, is_first=True),
-        build_row("", 0, "", "Backlog (đơn) | 积压单量",
-                  summary['cw_bl'], summary['pw_bl'], t_bl, 'Backlog', inverse=True),
+        build_row("Chất Lượng<br>质量", 3, "#ef4444",
+                  "Backlog (đơn) | 积压单量",
+                  summary['cw_bl'], summary['pw_bl'], t_bl, 'Backlog', inverse=True, is_first=True),
         build_row("", 0, "", "Đơn gửi đúng COT | 准时出库量",
                   summary['cw_cot_ontime'], summary['pw_cot_ontime'], cot_ontime_mtd, 'COT Ontime'),
         build_row("", 0, "", "% Sent Volume Ontime | 准时率",
@@ -840,14 +817,31 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                   summary['cw_shot'], summary['pw_shot'], shot_mtd, 'SH Rate (%)', is_pct=True),
     ]
 
-    _thead = f'<th style="text-align:left;width:90px">KPI</th><th style="text-align:left">Hạng mục | 指标名称</th>{header_wow}<th style="min-width:110px">{period_label} | 累计</th>{daily_hdrs}'
+    _thead = (
+        f'<th style="text-align:left;width:90px">KPI</th>'
+        f'<th style="text-align:left">Hạng mục | 指标名称</th>'
+        f'{header_wow}'
+        f'<th style="min-width:120px">{period_label} | 累计</th>'
+        f'{daily_hdrs}'
+    )
     _tbody = "".join(rows)
-    _html(f'<div class="kpi-wrap"><table class="kpi-table"><thead><tr>{_thead}</tr></thead><tbody>{_tbody}</tbody></table></div>', height=520)
+    _html(
+        f'<div class="kpi-wrap"><table class="kpi-table">'
+        f'<thead><tr>{_thead}</tr></thead>'
+        f'<tbody>{_tbody}</tbody></table></div>',
+        height=480
+    )
 
     # ══════════════════════════
     # SECTION 1 · SẢN LƯỢNG
     # ══════════════════════════
-    _html('<div class="section-header"><div><div class="section-header-text">Sản Lượng &amp; Năng Suất · 生产与产能</div><div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div></div></div>', height=68)
+    _html(
+        '<div class="section-header"><div>'
+        '<div class="section-header-text">Sản Lượng &amp; Năng Suất · 生产与产能</div>'
+        '<div class="section-header-sub">Inbound / Outbound / Trọng lượng hàng ngày</div>'
+        '</div></div>',
+        height=68
+    )
 
     col1, col2, col3 = st.columns([1.2, 1, 1])
     with col1:
@@ -856,18 +850,19 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             x=df['Ngày'], y=df['Inbound Vol'], name="Inbound",
             fill='tozeroy', mode='lines+markers',
             line=dict(color='#1a56db', width=3),
-            marker=dict(size=5, color='#1a56db'),
+            marker=dict(size=6, color='#1a56db'),
             fillcolor='rgba(26,86,219,.08)',
         ))
         fig.add_trace(go.Scatter(
             x=df['Ngày'], y=df['Outbound Vol'], name="Outbound",
             mode='lines+markers',
             line=dict(color='#f59e0b', width=3, dash='dot'),
-            marker=dict(size=5, color='#f59e0b'),
+            marker=dict(size=6, color='#f59e0b'),
         ))
         fig = clean_layout(fig, "Inbound & Outbound | 每日入库/出库")
         fig.update_layout(legend=dict(orientation="h", y=1.12))
         st.plotly_chart(fig, use_container_width=True, key=f"{hub_name}_{period_label}_fig1")
+
     with col2:
         fig2 = go.Figure()
         fig2.add_trace(go.Bar(
@@ -880,11 +875,12 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             text=[fmt_vn(v) if pd.notna(v) and v > 0 else "" for v in df['Total Process Vol']],
             textposition='inside', textangle=-90,
             insidetextanchor='end',
-            textfont=dict(size=12, color='white', family="JetBrains Mono"),
+            textfont=dict(size=13, color='white', family="JetBrains Mono"),
         ))
         fig2 = clean_layout(fig2, "Năng suất (Số đơn) | 产能单数")
         fig2.update_layout(showlegend=False)
         st.plotly_chart(fig2, use_container_width=True, key=f"{hub_name}_{period_label}_fig2")
+
     with col3:
         fig3 = go.Figure()
         fig3.add_trace(go.Bar(
@@ -897,7 +893,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             text=[fmt_vn(v) if pd.notna(v) and v > 0 else "" for v in df['Total Process Wgt']],
             textposition='inside', textangle=-90,
             insidetextanchor='end',
-            textfont=dict(size=12, color='white', family="JetBrains Mono"),
+            textfont=dict(size=13, color='white', family="JetBrains Mono"),
         ))
         fig3 = clean_layout(fig3, "Năng suất (Kg) | 产能重量")
         fig3.update_layout(showlegend=False)
@@ -906,7 +902,13 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ══════════════════════════
     # SECTION 2 · VẬN TẢI & COT
     # ══════════════════════════
-    _html('<div class="section-header"><div><div class="section-header-text">Vận Tải &amp; COT · 运输与准时出库管理</div><div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div></div></div>', height=68)
+    _html(
+        '<div class="section-header"><div>'
+        '<div class="section-header-text">Vận Tải &amp; COT · 运输与准时出库管理</div>'
+        '<div class="section-header-sub">Linehaul / Shuttle / Sent Volume Ontime</div>'
+        '</div></div>',
+        height=68
+    )
 
     col_t1, col_t2, col_t3 = st.columns(3)
     with col_t1:
@@ -915,17 +917,18 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             x=df['Ngày'], y=df['Shuttle Chuyến'], name="Shuttle",
             marker_color='#3b82f6',
             text=[int(x) if pd.notna(x) and x > 0 else "" for x in df['Shuttle Chuyến']],
-            textposition='inside', textfont=dict(size=12, color='white', weight='bold'),
+            textposition='inside', textfont=dict(size=13, color='white', weight='bold'),
         ))
         fig4.add_trace(go.Bar(
             x=df['Ngày'], y=df['Linehaul Chuyến'], name="Linehaul",
             marker_color='#f97316',
             text=[int(x) if pd.notna(x) and x > 0 else "" for x in df['Linehaul Chuyến']],
-            textposition='inside', textfont=dict(size=12, color='white', weight='bold'),
+            textposition='inside', textfont=dict(size=13, color='white', weight='bold'),
         ))
         fig4 = clean_layout(fig4, "Số chuyến Shuttle/LH | 总车次")
         fig4.update_layout(barmode='stack', legend=dict(orientation="h", y=1.12))
         st.plotly_chart(fig4, use_container_width=True, key=f"{hub_name}_{period_label}_fig4")
+
     with col_t2:
         fig5 = go.Figure()
         fig5.add_trace(go.Bar(
@@ -933,25 +936,26 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             marker_color='#bfdbfe', opacity=0.7,
             text=[fmt_vn(x) if pd.notna(x) and x > 0 else "" for x in df['COT Ontime']],
             textposition='inside', textangle=-90, insidetextanchor='end',
-            textfont=dict(size=11, color='#1e3a8a'),
+            textfont=dict(size=12, color='#1e3a8a'),
         ))
         fig5.add_trace(go.Scatter(
             x=df['Ngày'], y=df['COT Rate (%)'], name="Tỷ lệ %",
             yaxis="y2",
             line=dict(color='#059669', width=3),
             mode='lines+markers+text',
-            marker=dict(size=6, color='#059669'),
+            marker=dict(size=7, color='#059669'),
             text=[f"{v:.0f}%" if pd.notna(v) and v > 0 else "" for v in df['COT Rate (%)']],
             textposition="top center",
-            textfont=dict(size=13, color='#065f46', family="JetBrains Mono"),
+            textfont=dict(size=14, color='#065f46', family="JetBrains Mono"),
         ))
         fig5 = clean_layout(fig5, "% Sent Volume Ontime | 准时出库率")
         fig5.update_layout(
             showlegend=False,
             yaxis2=dict(overlaying='y', side='right', range=[0, 115],
-                        showgrid=False, tickfont=dict(size=12, color='#059669'))
+                        showgrid=False, tickfont=dict(size=13, color='#059669'))
         )
         st.plotly_chart(fig5, use_container_width=True, key=f"{hub_name}_{period_label}_fig5")
+
     with col_t3:
         fig6 = go.Figure()
         fig6.add_trace(go.Bar(
@@ -959,23 +963,23 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             marker_color='#fed7aa', opacity=0.7,
             text=[fmt_vn(x) if pd.notna(x) and x > 0 else "" for x in df['COT 1AM Ontime']],
             textposition='inside', textangle=-90, insidetextanchor='end',
-            textfont=dict(size=11, color='#7c2d12'),
+            textfont=dict(size=12, color='#7c2d12'),
         ))
         fig6.add_trace(go.Scatter(
             x=df['Ngày'], y=df['COT 1AM Rate (%)'], name="Tỷ lệ 1AM",
             yaxis="y2",
             line=dict(color='#ea580c', width=3),
             mode='lines+markers+text',
-            marker=dict(size=6, color='#ea580c'),
+            marker=dict(size=7, color='#ea580c'),
             text=[f"{v:.0f}%" if pd.notna(v) and v > 0 else "" for v in df['COT 1AM Rate (%)']],
             textposition="top center",
-            textfont=dict(size=13, color='#7c2d12', family="JetBrains Mono"),
+            textfont=dict(size=14, color='#7c2d12', family="JetBrains Mono"),
         ))
         fig6 = clean_layout(fig6, "% Sent Volume 1AM | 1AM准时率")
         fig6.update_layout(
             showlegend=False,
             yaxis2=dict(overlaying='y', side='right', range=[0, 115],
-                        showgrid=False, tickfont=dict(size=12, color='#ea580c'))
+                        showgrid=False, tickfont=dict(size=13, color='#ea580c'))
         )
         st.plotly_chart(fig6, use_container_width=True, key=f"{hub_name}_{period_label}_fig6")
 
@@ -987,11 +991,12 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             marker=dict(color='#ef4444', line=dict(color='#b91c1c', width=1)),
             text=[int(x) if pd.notna(x) and x > 0 else "" for x in df['Shuttle Late']],
             textposition='outside',
-            textfont=dict(size=13, color='#b91c1c', family="JetBrains Mono"),
+            textfont=dict(size=14, color='#b91c1c', family="JetBrains Mono"),
         ))
         fig7 = clean_layout(fig7, "Shuttle Late | 支线延迟", height=380)
         fig7.update_layout(showlegend=False)
         st.plotly_chart(fig7, use_container_width=True, key=f"{hub_name}_{period_label}_fig7")
+
     with col_l2:
         fig8 = go.Figure()
         fig8.add_trace(go.Bar(
@@ -999,11 +1004,12 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             marker=dict(color='#f43f5e', line=dict(color='#9f1239', width=1)),
             text=[int(x) if pd.notna(x) and x > 0 else "" for x in df['Linehaul Late']],
             textposition='outside',
-            textfont=dict(size=13, color='#9f1239', family="JetBrains Mono"),
+            textfont=dict(size=14, color='#9f1239', family="JetBrains Mono"),
         ))
         fig8 = clean_layout(fig8, "Linehaul Late | 干线延迟", height=380)
         fig8.update_layout(showlegend=False)
         st.plotly_chart(fig8, use_container_width=True, key=f"{hub_name}_{period_label}_fig8")
+
     with col_l3:
         fig9 = go.Figure()
         fig9.add_trace(go.Bar(
@@ -1016,7 +1022,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             ),
             text=[fmt_vn(x) if pd.notna(x) and x > 0 else "" for x in df['Backlog']],
             textposition='outside',
-            textfont=dict(size=13, color='#b45309', family="JetBrains Mono"),
+            textfont=dict(size=14, color='#b45309', family="JetBrains Mono"),
         ))
         fig9 = clean_layout(fig9, "Backlog | 积压", height=380)
         fig9.update_layout(showlegend=False)
@@ -1042,6 +1048,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 # ════════════════════════════════════════════════════════════
 from datetime import datetime
 now_str = datetime.now().strftime("%d/%m/%Y · %H:%M")
+
 st.markdown(f"""
 <div class="dashboard-header">
     <div class="header-title">J&amp;T Cargo · KPI Dashboard</div>
