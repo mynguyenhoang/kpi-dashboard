@@ -19,9 +19,8 @@ st.set_page_config(
 )
 
 st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
 /* ─── RESET & BASE ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 :root {
@@ -48,15 +47,18 @@ st.markdown("""
     --shadow-lg:  0 12px 32px rgba(11,20,55,.14), 0 4px 12px rgba(11,20,55,.08);
     --radius:     14px;
     --radius-sm:  8px;
-    --font:       'Plus Jakarta Sans', sans-serif;
+    --font:       'Nunito', sans-serif;
     --font-mono:  'JetBrains Mono', monospace;
 }
 
 /* ─── APP BACKGROUND ───────────────────────────────────── */
 .stApp, [data-testid="stAppViewContainer"] {
     background: var(--surface-2) !important;
-    font-family: var(--font) !important;
-    font-size: 15px !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 16px !important;
+}
+body, p, div, span, td, th, label, input, button {
+    font-family: 'Nunito', sans-serif !important;
 }
 
 /* ─── HIDE STREAMLIT CHROME ────────────────────────────── */
@@ -119,16 +121,17 @@ st.markdown("""
 }
 button[data-baseweb="tab"] {
     border-radius: 10px !important;
-    padding: 10px 24px !important;
-    font-family: var(--font) !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
+    padding: 11px 26px !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
     transition: all .2s ease !important;
 }
 button[data-baseweb="tab"] div {
     color: var(--text-muted) !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
+    font-family: 'Nunito', sans-serif !important;
 }
 button[data-baseweb="tab"][aria-selected="true"] {
     background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%) !important;
@@ -162,16 +165,16 @@ div[data-testid="metric-container"]::before {
     border-radius: var(--radius) var(--radius) 0 0;
 }
 div[data-testid="metric-container"] label {
-    font-family: var(--font) !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
     color: var(--text-muted) !important;
-    letter-spacing: .4px !important;
+    letter-spacing: .3px !important;
     text-transform: uppercase !important;
 }
 div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     font-family: var(--font-mono) !important;
-    font-size: 30px !important;
+    font-size: 32px !important;
     font-weight: 700 !important;
     color: var(--navy) !important;
     letter-spacing: -1px !important;
@@ -187,15 +190,17 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     border-bottom: 1px solid var(--border);
 }
 .section-header-text {
-    font-size: 20px;
-    font-weight: 800;
+    font-size: 22px;
+    font-weight: 900;
     color: var(--navy);
     letter-spacing: -.3px;
+    font-family: 'Nunito', sans-serif !important;
 }
 .section-header-sub {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-muted);
+    font-family: 'Nunito', sans-serif !important;
 }
 
 /* ─── KPI TABLE ─────────────────────────────────────────── */
@@ -216,32 +221,34 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     background: linear-gradient(135deg, var(--navy) 0%, #1a3a8f 100%);
 }
 .kpi-table th {
-    color: rgba(255,255,255,.9) !important;
-    padding: 16px 13px;
+    color: rgba(255,255,255,.95) !important;
+    padding: 17px 14px;
     text-align: center;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    letter-spacing: .5px;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    letter-spacing: .4px;
     text-transform: uppercase;
     border: none !important;
     white-space: nowrap;
+    font-family: 'Nunito', sans-serif !important;
 }
 .kpi-table th:first-child { text-align: left; }
 .kpi-table tbody tr { transition: background .15s; }
 .kpi-table tbody tr:hover { background: #f0f5ff; }
 .kpi-table td {
-    padding: 14px 13px;
+    padding: 15px 14px;
     border-bottom: 1px solid var(--border);
     border-right: none;
-    font-size: 15px;
+    font-size: 16px;
     color: var(--text-main);
     vertical-align: middle;
+    font-family: 'Nunito', sans-serif !important;
 }
 .kpi-table tbody tr:last-child td { border-bottom: none; }
 
 /* Pillar cells */
 .col-pillar {
-    font-weight: 800 !important;
+    font-weight: 900 !important;
     font-size: 13px !important;
     text-align: center !important;
     background: var(--surface-2) !important;
@@ -249,20 +256,22 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     letter-spacing: .3px;
     border-right: 1px solid var(--border) !important;
     white-space: nowrap;
+    font-family: 'Nunito', sans-serif !important;
 }
 /* Metric name */
 .col-metric {
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     color: #1e293b !important;
-    font-size: 15px !important;
+    font-size: 16px !important;
     border-right: 1px solid var(--border) !important;
     min-width: 230px;
+    font-family: 'Nunito', sans-serif !important;
 }
 /* Numbers */
 .col-num {
     text-align: right !important;
     font-family: var(--font-mono) !important;
-    font-size: 15px !important;
+    font-size: 16px !important;
     font-weight: 600 !important;
     color: var(--navy) !important;
     white-space: nowrap;
@@ -271,7 +280,7 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
 .col-mtd {
     text-align: right !important;
     font-family: var(--font-mono) !important;
-    font-size: 18px !important;
+    font-size: 20px !important;
     font-weight: 800 !important;
     background: linear-gradient(135deg, #ecfdf5, #d1fae5) !important;
     color: #065f46 !important;
@@ -502,36 +511,30 @@ def get_data():
 # 3. TIỆN ÍCH ĐỊNH DẠNG
 # ════════════════════════════════════════════════════════════
 _IFRAME_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:transparent;font-family:'Plus Jakarta Sans',sans-serif;font-size:15px}
+body{background:transparent;font-family:'Nunito',sans-serif;font-size:16px}
 :root{
   --navy:#0B1437;--blue:#1a56db;--surface:#ffffff;--surface-2:#f4f7fe;
   --border:#e8edf9;--text-main:#0b1437;--text-muted:#5a6585;
   --green:#05c168;--green-bg:#ecfdf5;--green-txt:#065f46;
-  --red:#f04438;--font:'Plus Jakarta Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --red:#f04438;--font:'Nunito',sans-serif;--font-mono:'JetBrains Mono',monospace;
 }
 .kpi-wrap{background:#fff;border-radius:14px;box-shadow:0 4px 16px rgba(11,20,55,.10);overflow:hidden;border:1px solid #e8edf9}
-.kpi-table{width:100%;border-collapse:collapse;font-family:var(--font)}
+.kpi-table{width:100%;border-collapse:collapse;font-family:'Nunito',sans-serif}
 .kpi-table thead tr{background:linear-gradient(135deg,#0B1437 0%,#1a3a8f 100%)}
-.kpi-table th{color:rgba(255,255,255,.9);padding:15px 12px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:none;white-space:nowrap}
+.kpi-table th{color:rgba(255,255,255,.95);padding:16px 14px;text-align:center;font-size:14px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;border:none;white-space:nowrap;font-family:'Nunito',sans-serif}
 .kpi-table th:first-child{text-align:left}
 .kpi-table tbody tr:hover{background:#f0f5ff}
-.kpi-table td{padding:13px 12px;border-bottom:1px solid #e8edf9;font-size:15px;color:#0b1437;vertical-align:middle}
+.kpi-table td{padding:15px 14px;border-bottom:1px solid #e8edf9;font-size:16px;color:#0b1437;vertical-align:middle;font-family:'Nunito',sans-serif}
 .kpi-table tbody tr:last-child td{border-bottom:none}
-.col-pillar{font-weight:800;font-size:13px;text-align:center;background:#f4f7fe;letter-spacing:.3px;border-right:1px solid #e8edf9;white-space:nowrap}
-.col-metric{font-weight:600;color:#1e293b;font-size:15px;border-right:1px solid #e8edf9;min-width:220px}
-.col-num{text-align:right;font-family:var(--font-mono);font-size:15px;font-weight:600;color:#0b1437;white-space:nowrap}
-.col-mtd{text-align:right;font-family:var(--font-mono);font-size:18px;font-weight:800;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;border-left:3px solid #05c168;white-space:nowrap}
+.col-pillar{font-weight:900;font-size:13px;text-align:center;background:#f4f7fe;letter-spacing:.3px;border-right:1px solid #e8edf9;white-space:nowrap;font-family:'Nunito',sans-serif}
+.col-metric{font-weight:700;color:#1e293b;font-size:16px;border-right:1px solid #e8edf9;min-width:230px;font-family:'Nunito',sans-serif}
+.col-num{text-align:right;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:#0b1437;white-space:nowrap}
+.col-mtd{text-align:right;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;border-left:3px solid #05c168;white-space:nowrap}
 .section-header{display:flex;align-items:center;gap:10px;padding:14px 2px 12px;border-bottom:1px solid #e8edf9;margin-bottom:4px}
-.section-header-text{font-size:19px;font-weight:800;color:#0b1437;letter-spacing:-.3px}
-.section-header-sub{font-size:13px;font-weight:500;color:#5a6585;margin-top:2px}
-/* Trend badge */
-.trend-up-good{display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #86efac;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
-.trend-up-bad{display:inline-block;background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
-.trend-down-good{display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #86efac;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
-.trend-down-bad{display:inline-block;background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
-.trend-neutral{display:inline-block;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;padding:3px 9px;border-radius:99px;font-size:13px;font-weight:700;margin-left:5px;font-family:var(--font-mono)}
+.section-header-text{font-size:20px;font-weight:900;color:#0b1437;letter-spacing:-.3px;font-family:'Nunito',sans-serif}
+.section-header-sub{font-size:14px;font-weight:600;color:#5a6585;margin-top:2px;font-family:'Nunito',sans-serif}
 """
 
 def _html(html_body: str, height: int = 500):
@@ -579,9 +582,10 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     prev_str = fmt_vn(prev) if not is_pct else f"{prev:.2f}%"
 
     return (
-        f"<td style='background:{bg};color:{tc};font-weight:800;text-align:center;"
-        f"font-size:14px;border-radius:8px;white-space:nowrap;"
-        f"border:1px solid {border};padding:6px 10px'>{wow_str}</td>"
+        f"<td style='background:{bg};color:{tc};font-weight:900;text-align:center;"
+        f"font-size:15px;border-radius:8px;white-space:nowrap;"
+        f"font-family:JetBrains Mono,monospace;"
+        f"border:1px solid {border};padding:7px 12px'>{wow_str}</td>"
         f"<td class='col-num'>{cur_str}</td>"
         f"<td class='col-num'>{prev_str}</td>"
     )
@@ -589,13 +593,13 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
 # ════════════════════════════════════════════════════════════
 # 4. CHART THEME
 # ════════════════════════════════════════════════════════════
-CHART_FONT = dict(family="Plus Jakarta Sans, sans-serif", size=14, color="#0b1437")
+CHART_FONT = dict(family="Nunito, sans-serif", size=15, color="#0b1437")
 
 def clean_layout(fig, title, height=480):
     fig.update_layout(
         title=dict(
             text=title,
-            font=dict(family="Plus Jakarta Sans, sans-serif", size=18, color="#0b1437", weight="bold"),
+            font=dict(family="Nunito, sans-serif", size=19, color="#0b1437", weight="bold"),
             x=0, xanchor='left', pad=dict(l=4, t=4)
         ),
         plot_bgcolor="white",
@@ -605,7 +609,7 @@ def clean_layout(fig, title, height=480):
         font=CHART_FONT,
         xaxis=dict(
             showgrid=False,
-            tickfont=dict(size=13, color="#5a6585"),
+            tickfont=dict(size=14, color="#5a6585", family="Nunito, sans-serif"),
             tickangle=-45,
             linecolor="#e8edf9",
             showline=True,
@@ -614,16 +618,16 @@ def clean_layout(fig, title, height=480):
             showgrid=True,
             gridcolor="#f0f4ff",
             gridwidth=1,
-            tickfont=dict(size=13, color="#5a6585"),
+            tickfont=dict(size=14, color="#5a6585", family="Nunito, sans-serif"),
             zeroline=False,
         ),
         hoverlabel=dict(
-            font=dict(family="Plus Jakarta Sans, sans-serif", size=15),
+            font=dict(family="Nunito, sans-serif", size=15),
             bgcolor="white",
             bordercolor="#e8edf9",
         ),
         legend=dict(
-            font=dict(family="Plus Jakarta Sans, sans-serif", size=14),
+            font=dict(family="Nunito, sans-serif", size=15),
             bgcolor="rgba(255,255,255,.9)",
             bordercolor="#e8edf9",
             borderwidth=1,
@@ -697,17 +701,17 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
                 badge = (
                     f"<span style='display:inline-block;background:{badge_bg};color:{badge_col};"
-                    f"border:1px solid {badge_bdr};padding:2px 8px;border-radius:99px;"
-                    f"font-size:13px;font-weight:700;margin-left:5px;"
+                    f"border:1px solid {badge_bdr};padding:3px 10px;border-radius:99px;"
+                    f"font-size:14px;font-weight:800;margin-left:6px;"
                     f"font-family:JetBrains Mono,monospace'>{arrow}</span>"
                 )
                 styled = (
-                    f"<span style='font-family:JetBrains Mono,monospace;font-size:15px;"
+                    f"<span style='font-family:JetBrains Mono,monospace;font-size:16px;"
                     f"font-weight:700;color:#0b1437'>{cur_str}</span>{badge}"
                 )
             else:
                 styled = (
-                    f"<span style='font-family:JetBrains Mono,monospace;font-size:15px;"
+                    f"<span style='font-family:JetBrains Mono,monospace;font-size:16px;"
                     f"font-weight:700;color:#0b1437'>{cur_str}</span>"
                 )
 
@@ -744,18 +748,21 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             <div style="
                 background:white;
                 border:1px solid #e8edf9;
-                border-top:3px solid {color};
+                border-top:4px solid {color};
                 border-radius:14px;
-                padding:20px 18px 16px;
+                padding:22px 20px 18px;
                 box-shadow:0 2px 8px rgba(11,20,55,.07);
+                font-family:'Nunito',sans-serif;
             ">
-                <div style="font-size:12px;font-weight:700;color:#8896b3;
-                    text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+                <div style="font-size:13px;font-weight:800;color:#8896b3;
+                    text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;
+                    font-family:'Nunito',sans-serif">
                     {vn} · {cn}
                     <span style="background:{color}22;color:{color};
-                    padding:2px 8px;border-radius:99px;font-size:11px;margin-left:4px">{lbl}</span>
+                    padding:2px 9px;border-radius:99px;font-size:12px;margin-left:5px;
+                    font-weight:700">{lbl}</span>
                 </div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:28px;
+                <div style="font-family:'JetBrains Mono',monospace;font-size:30px;
                     font-weight:700;color:#0b1437;letter-spacing:-1px;line-height:1">
                     {fmt_vn(val)}
                 </div>
