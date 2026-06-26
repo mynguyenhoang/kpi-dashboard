@@ -591,7 +591,7 @@ def get_wow_cell(cur, prev, is_pct=False, inverse=False):
     )
 
 # ════════════════════════════════════════════════════════════
-# 4. CHART THEME
+# 4. CHART THEME  ← ĐÃ FIX NHÃN TRỤC X BỊ CHỒNG CHÉO
 # ════════════════════════════════════════════════════════════
 CHART_FONT = dict(family="Nunito, sans-serif", size=15, color="#0b1437")
 
@@ -604,13 +604,14 @@ def clean_layout(fig, title, height=480):
         ),
         plot_bgcolor="white",
         paper_bgcolor="white",
-        margin=dict(t=56, b=28, l=8, r=8),
+        margin=dict(t=56, b=70, l=8, r=8),  # ← tăng b từ 28 → 70 để nhãn xoay không bị cắt
         height=height,
         font=CHART_FONT,
         xaxis=dict(
             showgrid=False,
-            tickfont=dict(size=14, color="#5a6585", family="Nunito, sans-serif"),
-            tickangle=-45,
+            tickfont=dict(size=11, color="#5a6585", family="Nunito, sans-serif"),  # ← giảm size 14→11
+            tickangle=-90,   # ← đổi -45 → -90: xoay đứng hẳn, không bị đè nhau
+            nticks=16,       # ← tối đa 16 nhãn, tự skip nếu quá dày
             linecolor="#e8edf9",
             showline=True,
         ),
