@@ -294,6 +294,44 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
 ::-webkit-scrollbar-thumb { background: #c7d2e8; border-radius: 99px; }
 
 .js-plotly-plot { border-radius: var(--radius); overflow: hidden; }
+
+/* ─── EXPANDER FIX ──────────────────────────────────────── */
+details > summary {
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--navy) !important;
+    letter-spacing: 0 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+details > summary p,
+details > summary span,
+[data-testid="stExpanderToggleIcon"] {
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 15px !important;
+    letter-spacing: 0 !important;
+}
+[data-testid="stExpander"] {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    background: var(--surface) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-top: 16px !important;
+}
+[data-testid="stExpander"] > details > summary:hover {
+    background: var(--surface-2) !important;
+    border-radius: var(--radius) !important;
+}
+/* Fix dataframe font inside expander */
+[data-testid="stExpander"] .stDataFrame,
+[data-testid="stExpander"] table,
+[data-testid="stExpander"] td,
+[data-testid="stExpander"] th {
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 14px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1042,7 +1080,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
 
     # ── Raw data expander ──
     if show_raw_data:
-        with st.expander("Dữ liệu chi tiết | 详细数据"):
+        with st.expander("📋  Dữ liệu chi tiết | 详细数据"):
             raw = df.copy()
             for c in raw.columns:
                 if c != "Ngày":
@@ -1053,7 +1091,10 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                         except:
                             return str(x)
                     raw[c] = raw[c].apply(lambda x: _fmt(x))
-            st.dataframe(raw.set_index("Ngày").T, use_container_width=True)
+            st.dataframe(
+                raw.set_index("Ngày").T,
+                use_container_width=True,
+            )
 
 # ════════════════════════════════════════════════════════════
 # 6. APP ENTRY
