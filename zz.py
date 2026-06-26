@@ -296,23 +296,6 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
 .js-plotly-plot { border-radius: var(--radius); overflow: hidden; }
 
 /* ─── EXPANDER FIX ──────────────────────────────────────── */
-details > summary {
-    font-family: 'Nunito', sans-serif !important;
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    color: var(--navy) !important;
-    letter-spacing: 0 !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
-}
-details > summary p,
-details > summary span,
-[data-testid="stExpanderToggleIcon"] {
-    font-family: 'Nunito', sans-serif !important;
-    font-size: 15px !important;
-    letter-spacing: 0 !important;
-}
 [data-testid="stExpander"] {
     border: 1px solid var(--border) !important;
     border-radius: var(--radius) !important;
@@ -320,9 +303,27 @@ details > summary span,
     box-shadow: var(--shadow-sm) !important;
     margin-top: 16px !important;
 }
-[data-testid="stExpander"] > details > summary:hover {
-    background: var(--surface-2) !important;
-    border-radius: var(--radius) !important;
+[data-testid="stExpander"] details summary {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 12px 16px !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--navy) !important;
+    list-style: none !important;
+}
+[data-testid="stExpander"] details summary svg {
+    flex-shrink: 0 !important;
+    margin-right: 4px !important;
+}
+[data-testid="stExpander"] details summary p {
+    margin: 0 !important;
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--navy) !important;
 }
 /* Fix dataframe font inside expander */
 [data-testid="stExpander"] .stDataFrame,
