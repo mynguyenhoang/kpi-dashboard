@@ -1079,9 +1079,10 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         fig9.update_layout(showlegend=False)
         st.plotly_chart(fig9, use_container_width=True, key=f"{hub_name}_{period_label}_fig9")
 
-    # ── Raw data expander ──
+    # ── Raw data toggle ──
     if show_raw_data:
-        with st.expander("Du lieu chi tiet | 详细数据"):
+        show_table = st.checkbox("Xem du lieu chi tiet | 详细数据", key=f"raw_{hub_name}_{period_label}")
+        if show_table:
             raw = df.copy()
             for c in raw.columns:
                 if c != "Ngày":
