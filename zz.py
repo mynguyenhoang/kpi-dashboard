@@ -599,19 +599,20 @@ def clean_layout(fig, title, height=480):
     fig.update_layout(
         title=dict(
             text=title,
-            font=dict(family="Nunito, sans-serif", size=19, color="#0b1437", weight="bold"),
-            x=0, xanchor='left', pad=dict(l=4, t=4)
+            font=dict(family="Nunito, sans-serif", size=15, color="#0b1437"),
+            x=0, xanchor='left', pad=dict(l=4, t=6),
+            yref='paper', y=1, yanchor='bottom',
         ),
         plot_bgcolor="white",
         paper_bgcolor="white",
-        margin=dict(t=56, b=70, l=8, r=8),  # ← tăng b từ 28 → 70 để nhãn xoay không bị cắt
+        margin=dict(t=72, b=70, l=8, r=8),
         height=height,
         font=CHART_FONT,
         xaxis=dict(
             showgrid=False,
-            tickfont=dict(size=11, color="#5a6585", family="Nunito, sans-serif"),  # ← giảm size 14→11
-            tickangle=-90,   # ← đổi -45 → -90: xoay đứng hẳn, không bị đè nhau
-            nticks=16,       # ← tối đa 16 nhãn, tự skip nếu quá dày
+            tickfont=dict(size=10, color="#5a6585", family="Nunito, sans-serif"),
+            tickangle=-90,
+            nticks=16,
             linecolor="#e8edf9",
             showline=True,
         ),
@@ -619,19 +620,23 @@ def clean_layout(fig, title, height=480):
             showgrid=True,
             gridcolor="#f0f4ff",
             gridwidth=1,
-            tickfont=dict(size=14, color="#5a6585", family="Nunito, sans-serif"),
+            tickfont=dict(size=13, color="#5a6585", family="Nunito, sans-serif"),
             zeroline=False,
         ),
         hoverlabel=dict(
-            font=dict(family="Nunito, sans-serif", size=15),
+            font=dict(family="Nunito, sans-serif", size=14),
             bgcolor="white",
             bordercolor="#e8edf9",
         ),
         legend=dict(
-            font=dict(family="Nunito, sans-serif", size=15),
+            font=dict(family="Nunito, sans-serif", size=13),
             bgcolor="rgba(255,255,255,.9)",
             bordercolor="#e8edf9",
             borderwidth=1,
+            orientation="h",
+            x=0, y=1.18,          # legend nằm trên title, không đè nhau
+            xanchor="left",
+            yanchor="bottom",
         )
     )
     fig.update_traces(cliponaxis=False)
@@ -868,7 +873,6 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             marker=dict(size=6, color='#f59e0b'),
         ))
         fig = clean_layout(fig, "Inbound & Outbound | 每日入库/出库")
-        fig.update_layout(legend=dict(orientation="h", y=1.12))
         st.plotly_chart(fig, use_container_width=True, key=f"{hub_name}_{period_label}_fig1")
 
     with col2:
@@ -934,7 +938,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
             textposition='inside', textfont=dict(size=13, color='white', weight='bold'),
         ))
         fig4 = clean_layout(fig4, "Số chuyến Shuttle/LH | 总车次")
-        fig4.update_layout(barmode='stack', legend=dict(orientation="h", y=1.12))
+        fig4.update_layout(barmode='stack')
         st.plotly_chart(fig4, use_container_width=True, key=f"{hub_name}_{period_label}_fig4")
 
     with col_t2:
