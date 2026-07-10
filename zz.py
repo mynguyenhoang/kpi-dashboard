@@ -512,10 +512,14 @@ def get_data():
                 "pw_bl_24h":    clean_val(bl_24h_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_cot_ontime": clean_val(cot_ontime_idx, cw_idx) if cw_idx != -1 else 0,
                 "pw_cot_ontime": clean_val(cot_ontime_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_cot_1am_ontime": clean_val(cot_ontime_1am_idx, cw_idx) if cw_idx != -1 else 0,
+                "pw_cot_1am_ontime": clean_val(cot_ontime_1am_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_lhot": lhot(cw_idx), "pw_lhot": lhot(pw_idx),
                 "cw_shot": shot(cw_idx), "pw_shot": shot(pw_idx),
                 "cw_cot": get_rate(cot_ontime_idx, cot_total_idx, cw_idx),
                 "pw_cot": get_rate(cot_ontime_idx, cot_total_idx, pw_idx),
+                "cw_cot_1am": get_rate(cot_ontime_1am_idx, cot_total_1am_idx, cw_idx),
+                "pw_cot_1am": get_rate(cot_ontime_1am_idx, cot_total_1am_idx, pw_idx),
             }
             return pd.DataFrame(data), weekly_summary
 
@@ -774,6 +778,8 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     t_bl           = df['Backlog'].sum(skipna=True)
     t_bl_24h       = df['Backlog 24H'].sum(skipna=True)
     cot_ontime_mtd = df['COT Ontime'].sum(skipna=True)
+    cot_ontime_1am_mtd = df['COT 1AM Ontime'].sum(skipna=True)
+    
     lh_tot   = df['Linehaul Chuyến'].fillna(0).sum()
     lh_late  = df['Linehaul Late'].fillna(0).sum()
     lhot_mtd = (lh_tot - lh_late) / lh_tot * 100 if lh_tot > 0 else 0
@@ -781,6 +787,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     sh_late  = df['Shuttle Late'].fillna(0).sum()
     shot_mtd = (sh_tot - sh_late) / sh_tot * 100 if sh_tot > 0 else 0
     cot_mtd  = df['COT Ontime'].sum() / df['COT Total'].sum() * 100 if df['COT Total'].sum() > 0 else 0
+    cot_1am_mtd  = df['COT 1AM Ontime'].sum() / df['COT 1AM Total'].sum() * 100 if df['COT 1AM Total'].sum() > 0 else 0
 
     # ── 5 Summary cards ────────────────────────────────────
     CARDS = [
@@ -860,7 +867,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         build_row("", 0, "", "Trọng lượng (kg) | 重量",
                   summary['cw_tproc_wgt'], summary['pw_tproc_wgt'], t_tproc_wgt, 'Total Process Wgt'),
         
-        build_row("Chất Lượng<br>质量", 4, "#ef4444",
+        build_row("Chất Lượng<br>质量", 6, "#ef4444",
                   "Backlog (đơn) | 积压单量",
                   summary['cw_bl'], summary['pw_bl'], t_bl, 'Backlog', inverse=True, is_first=True),
         build_row("", 0, "", "Backlog >24H | 超24H积压",
@@ -869,6 +876,10 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
                   summary['cw_cot_ontime'], summary['pw_cot_ontime'], cot_ontime_mtd, 'COT Ontime'),
         build_row("", 0, "", "% Sent Volume Ontime | 准时率",
                   summary['cw_cot'], summary['pw_cot'], cot_mtd, 'COT Rate (%)', is_pct=True),
+        build_row("", 0, "", "Đơn gửi đúng COT 1AM | 1AM准时出库量",
+                  summary['cw_cot_1am_ontime'], summary['pw_cot_1am_ontime'], cot_ontime_1am_mtd, 'COT 1AM Ontime'),
+        build_row("", 0, "", "% Sent Vol Ontime 1AM | 1AM准时率",
+                  summary['cw_cot_1am'], summary['pw_cot_1am'], cot_1am_mtd, 'COT 1AM Rate (%)', is_pct=True),
         
         build_row("Vận Tải<br>运输", 2, "#059669",
                   "Linehaul đúng COT (%) | 干线准时率",
@@ -889,7 +900,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         f'<div class="kpi-wrap"><table class="kpi-table">'
         f'<thead><tr>{_thead}</tr></thead>'
         f'<tbody>{_tbody}</tbody></table></div>',
-        height=530
+        height=630
     )
 
     # ══════════════════════════
