@@ -504,6 +504,10 @@ def get_data():
                 "pw_vin":       clean_val(vin_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_vout":      clean_val(vout_idx, cw_idx) if cw_idx != -1 else 0,
                 "pw_vout":      clean_val(vout_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_win":       clean_val(win_idx, cw_idx) if cw_idx != -1 else 0,
+                "pw_win":       clean_val(win_idx, pw_idx) if pw_idx != -1 else 0,
+                "cw_wout":      clean_val(wout_idx, cw_idx) if cw_idx != -1 else 0,
+                "pw_wout":      clean_val(wout_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_tproc_wgt": clean_val(tproc_wgt_idx, cw_idx) if cw_idx != -1 else 0,
                 "pw_tproc_wgt": clean_val(tproc_wgt_idx, pw_idx) if pw_idx != -1 else 0,
                 "cw_bl":        clean_val(bl_idx, cw_idx) if cw_idx != -1 else 0,
@@ -585,7 +589,7 @@ body{background:transparent;font-family:'Nunito',sans-serif;font-size:16px}
 
 def _html(html_body: str, height: int = 500):
     full = f"<!DOCTYPE html><html><head><style>{_IFRAME_CSS}</style></head><body>{html_body}</body></html>"
-    components.html(full, height=height, scrolling=False)
+    components.html(full, height=height, scrolling=True)
 
 def fmt_vn(number):
     if pd.isna(number) or number == "":
@@ -773,6 +777,8 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
     # ── MTD aggregates ──────────────────────────────────────
     t_vin          = df['Inbound Vol'].sum(skipna=True)
     t_vout         = df['Outbound Vol'].sum(skipna=True)
+    t_win          = df['Inbound Wgt'].sum(skipna=True)
+    t_wout         = df['Outbound Wgt'].sum(skipna=True)
     t_tproc_vol    = df['Total Process Vol'].sum(skipna=True)
     t_tproc_wgt    = df['Total Process Wgt'].sum(skipna=True)
     t_bl           = df['Backlog'].sum(skipna=True)
@@ -859,13 +865,15 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         )
 
     rows = [
-        build_row("Sản Lượng<br>生产", 3, "#1a56db",
+        build_row("Sản Lượng<br>生产", 4, "#1a56db",
                   "Inbound (đơn) | 入库单量",
                   summary['cw_vin'], summary['pw_vin'], t_vin, 'Inbound Vol', is_first=True),
         build_row("", 0, "", "Outbound (đơn) | 出库单量",
                   summary['cw_vout'], summary['pw_vout'], t_vout, 'Outbound Vol'),
-        build_row("", 0, "", "Trọng lượng (kg) | 重量",
-                  summary['cw_tproc_wgt'], summary['pw_tproc_wgt'], t_tproc_wgt, 'Total Process Wgt'),
+        build_row("", 0, "", "Trọng lượng Inbound (kg) | 入库重量",
+                  summary['cw_win'], summary['pw_win'], t_win, 'Inbound Wgt'),
+        build_row("", 0, "", "Trọng lượng Outbound (kg) | 出库重量",
+                  summary['cw_wout'], summary['pw_wout'], t_wout, 'Outbound Wgt'),
         
         build_row("Chất Lượng<br>质量", 6, "#ef4444",
                   "Backlog (đơn) | 积压单量",
@@ -900,7 +908,7 @@ def render_dashboard(df, summary, accent_color, hub_name, period_label="MTD",
         f'<div class="kpi-wrap"><table class="kpi-table">'
         f'<thead><tr>{_thead}</tr></thead>'
         f'<tbody>{_tbody}</tbody></table></div>',
-        height=630
+        height=900
     )
 
     # ══════════════════════════
