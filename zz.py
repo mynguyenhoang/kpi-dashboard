@@ -19,8 +19,8 @@ headers = {"Authorization": f"Bearer {token}"}
 res = requests.get(url, headers=headers).json()
 vals = res.get('data', {}).get('valueRange', {}).get('values', [])
 
-# In ra từng dòng để bạn tự nhìn thấy Index
 for i, row in enumerate(vals):
-    # Chỉ lấy 3 cột đầu để nhìn cho gọn, tránh rác màn hình
-    text_preview = " | ".join([str(x) for x in row[:3] if x is not None])
+    if i < 68:
+        continue
+    text_preview = " | ".join([str(x)[:80] for x in row[:3] if x is not None])
     st.write(f"**Index {i}**: {text_preview}")
