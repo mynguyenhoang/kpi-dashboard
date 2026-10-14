@@ -13,7 +13,7 @@ def get_tenant_access_token():
     return requests.post(url, json=payload).json().get("tenant_access_token")
 
 token = get_tenant_access_token()
-url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ80?valueRenderOption=FormattedValue"
+url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/NIBWsB2ybhcsamtpF3wcbdL0nVb/values/OGehC6!A1:AQ200?valueRenderOption=FormattedValue"
 headers = {"Authorization": f"Bearer {token}"}
 
 res = requests.get(url, headers=headers).json()
