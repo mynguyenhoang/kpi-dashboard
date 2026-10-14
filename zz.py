@@ -125,26 +125,10 @@ button[data-baseweb="tab"][aria-selected="true"] {
 # ════════════════════════════════════════════════════════════
 # 2. HÀM LẤY DỮ LIỆU TỪ FEISHU
 # ════════════════════════════════════════════════════════════
-def _secret(key):
-    """Đọc key từ .streamlit/secrets.toml hoặc biến môi trường."""
-    try:
-        val = st.secrets[key]
-        if val:
-            return val
-    except Exception:
-        pass
-    return os.environ.get(key)
-
-
 def get_tenant_access_token():
-    app_id = _secret("FEISHU_APP_ID")
-    app_secret = _secret("FEISHU_APP_SECRET")
-    if not app_id or not app_secret:
-        st.error("Thiếu FEISHU_APP_ID / FEISHU_APP_SECRET (đặt trong .streamlit/secrets.toml hoặc biến môi trường).")
-        return None
     try:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
-        payload = {"app_id": app_id, "app_secret": app_secret}
+        payload = {"app_id": "cli_a9456e412bb89bce", "app_secret": "BwSAuHHsv2woEdIGTqJoKboH6i1i7qBB"}
         r = requests.post(url, json=payload, timeout=10)
         return r.json().get("tenant_access_token")
     except Exception as e:
